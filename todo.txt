@@ -1,0 +1,14 @@
+Utility:
+- Test module (google test)
+- Math module (with sampling)
+- OpenGL module
+- Image module
+- Spatial Accel
+
+Rendering:
+- Scene module + loading from obj, alembic
+- GL rendering
+- Offline rendering
+
+Linux:
+- adapt file module to linux
