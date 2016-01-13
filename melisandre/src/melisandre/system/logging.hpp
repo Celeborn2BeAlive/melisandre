@@ -11,9 +11,9 @@ void initLogging(int argc, char** argv, const FilePath& configFile = FilePath{ "
 
 using el::Logger;
 
-template<typename T>
-inline Logger* getLogger(T&& name) {
-    return el::Loggers::getLogger(std::forward<T>(name));
+template<typename String>
+inline Logger* getLogger(String&& name) {
+    return el::Loggers::getLogger(std::forward<String>(name));
 }
 
 }
