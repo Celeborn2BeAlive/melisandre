@@ -18,5 +18,28 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-add_subdirectory(melisandre-viewer)
-add_subdirectory(melisandre-tests)
+cmake_minimum_required(VERSION 2.8)
+
+project(melisandre-tests)
+
+set(EXECUTABLE_NAME melisandre-tests)
+set(MELISANDRE_LIBRARY melisandre)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/gtest-1.7.0/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/gtest-1.7.0)
+
+file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/gtest-1.7.0/*.h ${CMAKE_CURRENT_SOURCE_DIR}/gtest-1.7.0/gtest-all.cc)
+
+add_executable(
+    ${EXECUTABLE_NAME}
+    ${SRC_FILES}
+)
+
+target_link_libraries(
+    ${EXECUTABLE_NAME}
+    ${MELISANDRE_LIBRARY} ${SYSTEM_LIBRARIES} ${SDL_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${EMBREE_LIBRARIES} ${OPENEXR_LIBRARIES}
+)
+
+c2ba_copy_dll_post_build(${EXECUTABLE_NAME} "${3RD_PARTY_DLL_FILES}")
+c2ba_group_sources(${CMAKE_CURRENT_SOURCE_DIR}/src)
