@@ -50,7 +50,7 @@ inline float cosineSampleSpherePDF(const float3& s) {
 /*! Cosine weighted sphere sampling. Up direction is provided as argument. */
 inline Sample3f cosineSampleSphere(float u, float v, const float3& N) {
     Sample3f s = cosineSampleSphere(u, v);
-    return Sample3f(frameZ(N) * s.value, s.pdf);
+    return Sample3f(frameZ(N) * s.value, s.density);
 }
 
 /*! Computes the probability density for the cosine weighted sphere sampling. */
@@ -79,7 +79,7 @@ inline float uniformSampleHemispherePDF(const float3& s) {
 /*! Uniform hemisphere sampling. Up direction is provided as argument. */
 inline Sample3f uniformSampleHemisphere(float u, float v, const float3& N) {
     Sample3f s = uniformSampleHemisphere(u, v);
-    return Sample3f(frameZ(N) * s.value, s.pdf);
+    return Sample3f(frameZ(N) * s.value, s.density);
 }
 
 /*! Computes the probability density for the uniform hemisphere sampling. */
@@ -113,7 +113,7 @@ inline float cosineSampleHemispherePDF(const float3& s) {
 /*! Cosine weighted hemisphere sampling. Up direction is provided as argument. */
 inline Sample3f cosineSampleHemisphere(float u, float v, const float3& N) {
     Sample3f s = cosineSampleHemisphere(u, v);
-    return Sample3f(frameZ(N) * float3(s.value), s.pdf);
+    return Sample3f(frameZ(N) * float3(s.value), s.density);
 }
 
 inline float2 rcpCosineSampleHemisphere(const float3& d, const float3& N) {
@@ -147,7 +147,7 @@ inline float powerCosineSampleHemispherePDF(const float3& s, float exp) {
  *  is provided as argument. */
 inline Sample3f powerCosineSampleHemisphere(float u, float v, const float3& N, float exp) {
     Sample3f s = powerCosineSampleHemisphere(u,v,exp);
-    return Sample3f(frameZ(N) * float3(s.value), s.pdf);
+    return Sample3f(frameZ(N) * float3(s.value), s.density);
 }
 
 /*! Computes the probability density for the power cosine sampling of the hemisphere. */
@@ -180,7 +180,7 @@ inline float uniformSampleConePDF(const float3& s, float angle) {
 /*! Uniform sampling of spherical cone. Cone direction is provided as argument. */
 inline Sample3f uniformSampleCone(float u, float v, float angle, const float3& N) {
     Sample3f s = uniformSampleCone(u, v, angle);
-    return Sample3f(frameZ(N) * s.value, s.pdf);
+    return Sample3f(frameZ(N) * s.value, s.density);
 }
 
 /*! Computes the probability density of uniform spherical cone sampling. */

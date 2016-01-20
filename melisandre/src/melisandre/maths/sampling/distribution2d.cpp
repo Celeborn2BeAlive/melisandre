@@ -26,7 +26,7 @@ Sample2f sampleContinuousDistribution2D(const float* pBuffer, size_t width, size
     int idx = clamp(int(sy.value), 0, int(height) - 1);
 
     auto sx = sampleContinuousDistribution1D(pBuffer + height + 1 + idx * (width + 1), width, s2D.x);
-    return Sample2f(float2(sx.value, sy.value), sx.pdf * sy.pdf);
+    return Sample2f(float2(sx.value, sy.value), sx.density * sy.density);
 }
 
 Sample2u sampleDiscreteDistribution2D(const float* pBuffer, size_t width, size_t height, const float2& s2D) {
@@ -34,7 +34,7 @@ Sample2u sampleDiscreteDistribution2D(const float* pBuffer, size_t width, size_t
     int idx = sy.value;
 
     auto sx = sampleDiscreteDistribution1D(pBuffer + height + 1 + idx * (width + 1), width, s2D.x);
-    return Sample2u(uint2(sx.value, sy.value), sx.pdf * sy.pdf);
+    return Sample2u(uint2(sx.value, sy.value), sx.density * sy.density);
 }
 
 float pdfContinuousDistribution2D(const float* pBuffer, size_t width, size_t height, const float2& point) {

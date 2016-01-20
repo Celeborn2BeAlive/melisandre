@@ -5,21 +5,24 @@
 
 namespace mls {
 
-template<typename T>
+struct UnknownMeasure {
+
+};
+
+template<typename T, typename Measure = UnknownMeasure, typename RealType = real>
 struct Sample {
     T value;
-    float pdf = 0.f;
+    RealType density = 0.f;
 
     Sample() = default;
 
-    template<typename U>
-    Sample(U&& value, float pdf): value(std::forward<U>(value)), pdf(pdf) {
+    template<typename U, typename Real>
+    Sample(U&& value, Real&& density): value(std::forward<U>(value)), density(std::forward<Real>(density)) {
     }
 
-    /*
     explicit operator bool() const {
-        return pdf > 0.f;
-    }*/
+        return density > 0.f;
+    }
 };
 
 using Sample1f = Sample<float>;
@@ -30,7 +33,7 @@ using Sample2u = Sample<uint2>;
 
 template<typename T>
 inline std::ostream& operator <<(std::ostream& out, const Sample<T>& s) {
-    out << "[ " << s.value << ", pdf = " << s.pdf << " ] ";
+    out << "[ " << s.value << ", pdf = " << s.density << " ] ";
     return out;
 }
 
