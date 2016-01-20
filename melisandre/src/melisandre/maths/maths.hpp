@@ -11,14 +11,7 @@
 
 namespace mls {
 
-inline float3 getColor(uint32_t n) {
-    return fract(
-                sin(
-                    float(n + 1) * float3(12.9898, 78.233, 56.128)
-                    )
-                * 43758.5453f
-                );
-}
+
 
 /**
  * @brief cartesianToSpherical
