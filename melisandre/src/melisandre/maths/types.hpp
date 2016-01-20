@@ -7,13 +7,13 @@ namespace mls {
     using real = float;
 
     template<typename T>
-    using tvec1 = glm::tvec1<T>;
+    using tcoords1 = glm::tvec1<T>;
     template<typename T>
-    using tvec2 = glm::tvec2<T>;
+    using tcoords2 = glm::tvec2<T>;
     template<typename T>
-    using tvec3 = glm::tvec3<T>;
+    using tcoords3 = glm::tvec3<T>;
     template<typename T>
-    using tvec4 = glm::tvec4<T>;
+    using tcoords4 = glm::tvec4<T>;
 
     using bool2 = glm::bvec2;
     using bool3 = glm::bvec3;
@@ -27,9 +27,9 @@ namespace mls {
     using int3 = glm::ivec3;
     using int4 = glm::ivec4;
 
-    using size2 = tvec2<std::size_t>;
-    using size3 = tvec3<std::size_t>;
-    using size4 = tvec4<std::size_t>;
+    using size2 = tcoords2<std::size_t>;
+    using size3 = tcoords3<std::size_t>;
+    using size4 = tcoords4<std::size_t>;
 
     using float2 = glm::vec2;
     using float3 = glm::vec3;
@@ -38,6 +38,10 @@ namespace mls {
     using double2 = glm::dvec2;
     using double3 = glm::dvec3;
     using double4 = glm::dvec4;
+
+    using real2 = tcoords2<real>;
+    using real3 = tcoords3<real>;
+    using real4 = tcoords4<real>;
 
     template<typename T>
     using tmat2x2 = glm::tmat2x2<T>;
@@ -78,61 +82,76 @@ namespace mls {
     using double3x4 = glm::dmat3x4;
     using double4x3 = glm::dmat4x3;
 
-    template<typename T>
-    struct VecTraits {
-        static const auto Dimension = size_t{ 1 };
-        using Scalar = T;
+    using real2x2 = tmat2x2<real>;
+    using real3x3 = tmat3x3<real>;
+    using real4x4 = tmat4x4<real>;
+    using real2x3 = tmat2x3<real>;
+    using real3x2 = tmat3x2<real>;
+    using real2x4 = tmat2x4<real>;
+    using real4x2 = tmat4x2<real>;
+    using real3x4 = tmat3x4<real>;
+    using real4x3 = tmat4x3<real>;
 
-        using vec1 = tvec1<T>;
-        using vec2 = tvec2<T>;
-        using vec3 = tvec3<T>;
-        using vec4 = tvec4<T>;
+    template<typename T>
+    struct CoordsTraits {
+        static const auto Dimension = size_t{ 1 };
+        using ScalarType = T;
+
+        using coords1 = tcoords1<T>;
+        using coords2 = tcoords2<T>;
+        using coords3 = tcoords3<T>;
+        using coords4 = tcoords4<T>;
 
         template<size_t dim>
-        struct vec;
+        struct coords;
 
         template<>
-        struct vec<1> {
-            using type = tvec1<T>;
+        struct coords<1> {
+            using type = tcoords1<T>;
         };
 
         template<>
-        struct vec<2> {
-            using type = tvec2<T>;
+        struct coords<2> {
+            using type = tcoords2<T>;
         };
 
         template<>
-        struct vec<3> {
-            using type = tvec3<T>;
+        struct coords<3> {
+            using type = tcoords3<T>;
         };
 
         template<>
-        struct vec<4> {
-            using type = tvec4<T>;
+        struct coords<4> {
+            using type = tcoords4<T>;
         };
     };
 
     template<typename T>
-    struct VecTraits<tvec1<T>> {
+    struct CoordsTraits<tcoords1<T>> {
         static const auto Dimension = size_t{ 1 };
-        using Scalar = T;
+        using ScalarType = T;
     };
 
     template<typename T>
-    struct VecTraits<tvec2<T>> {
+    struct CoordsTraits<tcoords2<T>> {
         static const auto Dimension = size_t{ 2 };
-        using Scalar = T;
+        using ScalarType = T;
     };
 
     template<typename T>
-    struct VecTraits<tvec3<T>> {
+    struct CoordsTraits<tcoords3<T>> {
         static const auto Dimension = size_t{ 3 };
-        using Scalar = T;
+        using ScalarType = T;
     };
 
     template<typename T>
-    struct VecTraits<tvec4<T>> {
+    struct CoordsTraits<tcoords4<T>> {
         static const auto Dimension = size_t{ 4 };
-        using Scalar = T;
+        using ScalarType = T;
     };
+
+    template<typename T>
+    inline auto valuePtr(const T& value) {
+        return glm::value_ptr(value);
+    }
 }

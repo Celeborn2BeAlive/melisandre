@@ -7,7 +7,7 @@ namespace mls {
 template<typename T>
 struct BBox
 {
-    static const auto dim = VecTraits<T>::dim;
+    static const auto dim = CoordsTraits<T>::dim;
     T lower, upper;
 
     BBox           ( ): lower(std::numeric_limits<T>::max()), upper(std::numeric_limits<T>::lowest()) { }
@@ -75,19 +75,19 @@ template<typename T> inline const BBox<T> intersect( const BBox<T>& a, const BBo
 
 /*! tests if bounding boxes (and points) are disjoint (empty intersection) */
 template<typename T> inline bool disjoint( const BBox<T>& a, const BBox<T>& b )
-{ const T d = min(a.upper, b.upper) - max(a.lower, b.lower); for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename VecTraits<T>::Scalar(0) ) return true; return false; }
+{ const T d = min(a.upper, b.upper) - max(a.lower, b.lower); for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename CoordsTraits<T>::ScalarType(0) ) return true; return false; }
 template<typename T> inline bool disjoint( const BBox<T>& a, const  T& b )
-{ const T d = min(a.upper, b)       - max(a.lower, b);       for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename VecTraits<T>::Scalar(0) ) return true; return false; }
+{ const T d = min(a.upper, b)       - max(a.lower, b);       for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename CoordsTraits<T>::ScalarType(0) ) return true; return false; }
 template<typename T> inline bool disjoint( const  T& a, const BBox<T>& b )
-{ const T d = min(a, b.upper)       - max(a, b.lower);       for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename VecTraits<T>::Scalar(0) ) return true; return false; }
+{ const T d = min(a, b.upper)       - max(a, b.lower);       for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename CoordsTraits<T>::ScalarType(0) ) return true; return false; }
 
 /*! tests if bounding boxes (and points) are conjoint (non-empty intersection) */
 template<typename T> inline bool conjoint( const BBox<T>& a, const BBox<T>& b )
-{ const T d = min(a.upper, b.upper) - max(a.lower, b.lower); for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename VecTraits<T>::Scalar(0) ) return false; return true; }
+{ const T d = min(a.upper, b.upper) - max(a.lower, b.lower); for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename CoordsTraits<T>::ScalarType(0) ) return false; return true; }
 template<typename T> inline bool conjoint( const BBox<T>& a, const  T& b )
-{ const T d = min(a.upper, b)       - max(a.lower, b);       for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename VecTraits<T>::Scalar(0) ) return false; return true; }
+{ const T d = min(a.upper, b)       - max(a.lower, b);       for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename CoordsTraits<T>::ScalarType(0) ) return false; return true; }
 template<typename T> inline bool conjoint( const  T& a, const BBox<T>& b )
-{ const T d = min(a, b.upper)       - max(a, b.lower);       for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename VecTraits<T>::Scalar(0) ) return false; return true; }
+{ const T d = min(a, b.upper)       - max(a, b.lower);       for ( size_t i = 0 ; i < BBox<T>::dim ; i++ ) if ( d[i] < typename CoordsTraits<T>::ScalarType(0) ) return false; return true; }
 
 /*! subset relation */
 template<typename T> inline bool subset( const BBox<T>& a, const BBox<T>& b )
@@ -104,7 +104,7 @@ template<typename T> inline std::ostream& operator<<(std::ostream& cout, const B
 
 template<typename T>
 inline void boundingSphere(const BBox<T>& bbox, T& c,
-                           typename VecTraits<T>::Scalar& radius) {
+                           typename CoordsTraits<T>::ScalarType& radius) {
     c = center(bbox);
     radius = length(size(bbox)) * 0.5f;
 }
