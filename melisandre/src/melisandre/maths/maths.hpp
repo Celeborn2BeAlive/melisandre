@@ -11,7 +11,7 @@
 
 namespace mls {
 
-
+    using glm::abs;
 
 /**
  * @brief cartesianToSpherical

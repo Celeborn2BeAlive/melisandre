@@ -9,53 +9,61 @@ namespace mls {
 /// Sampling of Sphere
 ////////////////////////////////////////////////////////////////////////////////
 
+inline real3 directionFromPhiCosThetaSinTheta(real phi, real cosTheta, real sinTheta) {
+    return real3 {
+        cos(phi) * sinTheta,
+        sin(phi) * sinTheta,
+        cosTheta
+    };
+}
+
 /*! Uniform sphere sampling. */
-inline Sample3f uniformSampleSphere(float u, float v) {
-    const float phi = two_pi<float>() * u;
-    const float cosTheta = 1.0f - 2.0f * v, sinTheta = 2.0f * sqrt(v * (1.0f - v));
-    return Sample3f(float3(cos(phi) * sinTheta,
-                          sin(phi) * sinTheta,
-                          cosTheta), one_over_four_pi<float>());
+inline DirectionSample uniformSampleSphere(real u, real v) {
+    const auto phi = two_pi<real>() * u;
+    const auto cosTheta = 1 - 2 * v, sinTheta = cos2sin(cosTheta);
+    return DirectionSample { directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), one_over_four_pi<real>() };
 }
 
-/*! Computes the probability density for the uniform shere sampling. */
-inline float uniformSampleSpherePDF() {
-    return one_over_four_pi<float>();
+/*! Computes the probability density for the uniform sphere sampling. */
+inline real uniformSampleSpherePDF(const real3& direction) {
+    return one_over_four_pi<real>();
 }
 
-inline float2 rcpUniformSampleSphere(const float3& wi) {
-    auto cosTheta = wi.z;
-    auto v = 0.5f * (cosTheta - 1.f);
-    auto phi = atan2(wi.y, wi.x);
-    auto u = phi * one_over_two_pi<float>();
-    return float2(u, v);
+inline real uniformSampleSpherePDF() {
+    return one_over_four_pi<real>();
+}
+
+inline real2 rcpUniformSampleSphere(const real3& direction) {
+    auto cosTheta = direction.z;
+    auto v = 0.5 * (cosTheta - 1);
+    auto phi = atan2(direction.y, direction.x);
+    auto u = phi * one_over_two_pi<real>();
+    return real2(u, v);
 }
 
 /*! Cosine weighted sphere sampling. Up direction is the z direction. */
-inline Sample3f cosineSampleSphere(float u, float v) {
-    const float phi = two_pi<float>() * u;
-    const float vv = 2.0f * (v - 0.5f);
-    const float cosTheta = sign(vv) * sqrt(abs(vv));
-    const float sinTheta = cos2sin(cosTheta);
-    return Sample3f(float3(cos(phi) * sinTheta,
-                            sin(phi) * sinTheta,
-                            cosTheta), 2.0f * cosTheta * one_over_pi<float>());
+inline DirectionSample cosineSampleSphere(real u, real v) {
+    const real phi = two_pi<real>() * u;
+    const real vv = 2.0f * (v - 0.5f);
+    const real cosTheta = sign(vv) * sqrt(abs(vv));
+    const real sinTheta = cos2sin(cosTheta);
+    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), 2.0f * cosTheta * one_over_pi<real>());
 }
 
 /*! Computes the probability density for the cosine weighted sphere sampling. */
-inline float cosineSampleSpherePDF(const float3& s) {
-    return abs(s.z) * two_over_pi<float>();
+inline real cosineSampleSpherePDF(const real3& s) {
+    return abs(s.z) * two_over_pi<real>();
 }
 
 /*! Cosine weighted sphere sampling. Up direction is provided as argument. */
-inline Sample3f cosineSampleSphere(float u, float v, const float3& N) {
-    Sample3f s = cosineSampleSphere(u, v);
-    return Sample3f(frameZ(N) * s.value, s.density);
+inline DirectionSample cosineSampleSphere(real u, real v, const real3& N) {
+    DirectionSample s = cosineSampleSphere(u, v);
+    return DirectionSample(frameZ(N) * s.value(), s.density());
 }
 
 /*! Computes the probability density for the cosine weighted sphere sampling. */
-inline float cosineSampleSpherePDF(const float3& s, const float3& N) {
-    return abs(dot(s, N)) * two_over_pi<float>();
+inline real cosineSampleSpherePDF(const real3& s, const real3& N) {
+    return abs(dot(s, N)) * two_over_pi<real>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,97 +71,91 @@ inline float cosineSampleSpherePDF(const float3& s, const float3& N) {
 ////////////////////////////////////////////////////////////////////////////////
 
 /*! Uniform hemisphere sampling. Up direction is the z direction. */
-inline Sample3f uniformSampleHemisphere(float u, float v) {
-    const float phi = two_pi<float>() * u;
-    const float cosTheta = v, sinTheta = cos2sin(v);
-    return Sample3f(float3(cos(phi) * sinTheta,
-                              sin(phi) * sinTheta,
-                              cosTheta), one_over_two_pi<float>());
+inline DirectionSample uniformSampleHemisphere(real u, real v) {
+    const real phi = two_pi<real>() * u;
+    const real cosTheta = v, sinTheta = cos2sin(v);
+    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), one_over_two_pi<real>());
 }
 
 /*! Computes the probability density for the uniform hemisphere sampling. */
-inline float uniformSampleHemispherePDF(const float3& s) {
-    return s.z < 0.0f ? 0.0f : one_over_two_pi<float>();
+inline real uniformSampleHemispherePDF(const real3& s) {
+    return s.z < 0.0f ? 0.0f : one_over_two_pi<real>();
 }
 
 /*! Uniform hemisphere sampling. Up direction is provided as argument. */
-inline Sample3f uniformSampleHemisphere(float u, float v, const float3& N) {
-    Sample3f s = uniformSampleHemisphere(u, v);
-    return Sample3f(frameZ(N) * s.value, s.density);
+inline DirectionSample uniformSampleHemisphere(real u, real v, const real3& N) {
+    DirectionSample s = uniformSampleHemisphere(u, v);
+    return DirectionSample(frameZ(N) * s.value(), s.density());
 }
 
 /*! Computes the probability density for the uniform hemisphere sampling. */
-inline float uniformSampleHemispherePDF(const float3& s, const float3& N) {
-    return dot(s, N) < 0.0f ? 0.0f : one_over_two_pi<float>();
+inline real uniformSampleHemispherePDF(const real3& s, const real3& N) {
+    return dot(s, N) < 0.0f ? 0.0f : one_over_two_pi<real>();
 }
 
 /*! Cosine weighted hemisphere sampling. Up direction is the z direction. */
 // The pdf can be 0 if v = 0
-inline Sample3f cosineSampleHemisphere(float u, float v) {
-    const float phi = two_pi<float>() * u;
-    const float cosTheta = sqrt(v), sinTheta = sqrt(1.0f - v);
-    return Sample3f(float3(cos(phi) * sinTheta,
-                          sin(phi) * sinTheta,
-                          cosTheta), cosTheta * one_over_pi<float>());
+inline DirectionSample cosineSampleHemisphere(real u, real v) {
+    const real phi = two_pi<real>() * u;
+    const real cosTheta = sqrt(v), sinTheta = sqrt(1.0f - v);
+    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), cosTheta * one_over_pi<real>());
 }
 
-inline float2 rcpCosineSampleHemisphere(const float3& d) {
+inline real2 rcpCosineSampleHemisphere(const real3& d) {
     auto cosTheta = d.z;
     auto v = sqr(cosTheta);
     auto phi = atan2(d.y, d.x);
-    auto u = phi * one_over_two_pi<float>();
-    return float2(u, v);
+    auto u = phi * one_over_two_pi<real>();
+    return real2(u, v);
 }
 
 /*! Computes the probability density for the cosine weighted hemisphere sampling. */
-inline float cosineSampleHemispherePDF(const float3& s) {
-    return max(0.f, s.z * one_over_pi<float>());
+inline real cosineSampleHemispherePDF(const real3& s) {
+    return max(0.f, s.z * one_over_pi<real>());
 }
 
 /*! Cosine weighted hemisphere sampling. Up direction is provided as argument. */
-inline Sample3f cosineSampleHemisphere(float u, float v, const float3& N) {
-    Sample3f s = cosineSampleHemisphere(u, v);
-    return Sample3f(frameZ(N) * float3(s.value), s.density);
+inline DirectionSample cosineSampleHemisphere(real u, real v, const real3& N) {
+    DirectionSample s = cosineSampleHemisphere(u, v);
+    return DirectionSample(frameZ(N) * real3(s.value()), s.density());
 }
 
-inline float2 rcpCosineSampleHemisphere(const float3& d, const float3& N) {
+inline real2 rcpCosineSampleHemisphere(const real3& d, const real3& N) {
     return rcpCosineSampleHemisphere(inverse(frameZ(N)) * d);
 }
 
 /*! Computes the probability density for the cosine weighted hemisphere sampling. */
-inline float cosineSampleHemispherePDF(const float3& s, const float3& N) {
+inline real cosineSampleHemispherePDF(const real3& s, const real3& N) {
     auto z = dot(s, N);
-    return max(0.f, z * one_over_pi<float>());
+    return max(0.f, z * one_over_pi<real>());
 }
 
 /*! Samples hemisphere with power cosine distribution. Up direction
  *  is the z direction. */
-inline Sample3f powerCosineSampleHemisphere(float u, float v, float exp) {
-    const float phi = two_pi<float>() * u;
-    const float cosTheta = pow(v, 1.f / (exp + 1));
-    const float sinTheta = cos2sin(cosTheta);
-    return Sample3f(float3(cos(phi) * sinTheta,
-                              sin(phi) * sinTheta,
-                              cosTheta),
-                    (exp + 1.0f) * pow(cosTheta, exp) * one_over_two_pi<float>());
+inline DirectionSample powerCosineSampleHemisphere(real u, real v, real exp) {
+    const real phi = two_pi<real>() * u;
+    const real cosTheta = pow(v, 1.f / (exp + 1));
+    const real sinTheta = cos2sin(cosTheta);
+    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta),
+                    (exp + 1.0f) * pow(cosTheta, exp) * one_over_two_pi<real>());
 }
 
 /*! Computes the probability density for the power cosine sampling of the hemisphere. */
-inline float powerCosineSampleHemispherePDF(const float3& s, float exp) {
-    return s.z < 0.0f ? 0.0f : (exp + 1.0f) * pow(s.z, exp) * one_over_two_pi<float>();
+inline real powerCosineSampleHemispherePDF(const real3& s, real exp) {
+    return s.z < 0.0f ? 0.0f : (exp + 1.0f) * pow(s.z, exp) * one_over_two_pi<real>();
 }
 
 /*! Samples hemisphere with power cosine distribution. Up direction
  *  is provided as argument. */
-inline Sample3f powerCosineSampleHemisphere(float u, float v, const float3& N, float exp) {
-    Sample3f s = powerCosineSampleHemisphere(u,v,exp);
-    return Sample3f(frameZ(N) * float3(s.value), s.density);
+inline DirectionSample powerCosineSampleHemisphere(real u, real v, const real3& N, real exp) {
+    DirectionSample s = powerCosineSampleHemisphere(u,v,exp);
+    return DirectionSample(frameZ(N) * real3(s.value()), s.density());
 }
 
 /*! Computes the probability density for the power cosine sampling of the hemisphere. */
-inline float powerCosineSampleHemispherePDF(const float3& s, const float3& N, float exp) {
+inline real powerCosineSampleHemispherePDF(const real3& s, const real3& N, real exp) {
     auto z = dot(s, N);
-    return z < 0.0f ? 0.0f : (exp + 1.0f) * pow(z, exp) * one_over_two_pi<float>();
+    return z < 0.0f ? 0.0f : (exp + 1.0f) * pow(z, exp) * one_over_two_pi<real>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,30 +164,28 @@ inline float powerCosineSampleHemispherePDF(const float3& s, const float3& N, fl
 
 /*! Uniform sampling of spherical cone. Cone direction is the z
  *  direction. */
-inline Sample3f uniformSampleCone(float u, float v, float angle) {
-    const float phi = two_pi<float>() * u;
-    const float cosTheta = 1.0f - v * (1.0f - cos(angle));
-    const float sinTheta = cos2sin(cosTheta);
-    return Sample3f(float3(cos(phi) * sinTheta,
-                              sin(phi) * sinTheta,
-                              cosTheta),
-                    1.f / (four_pi<float>() * sqr(sin(0.5f * angle))));
+inline DirectionSample uniformSampleCone(real u, real v, real angle) {
+    const real phi = two_pi<real>() * u;
+    const real cosTheta = 1.0f - v * (1.0f - cos(angle));
+    const real sinTheta = cos2sin(cosTheta);
+    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta),
+                    1.f / (four_pi<real>() * sqr(sin(0.5f * angle))));
 }
 
 /*! Computes the probability density of uniform spherical cone sampling. */
-inline float uniformSampleConePDF(const float3& s, float angle) {
-    return s.z < cos(angle) ? 0.0f : 1.f / (four_pi<float>() * sqr(sin(0.5f * angle)));
+inline real uniformSampleConePDF(const real3& s, real angle) {
+    return s.z < cos(angle) ? 0.0f : 1.f / (four_pi<real>() * sqr(sin(0.5f * angle)));
 }
 
 /*! Uniform sampling of spherical cone. Cone direction is provided as argument. */
-inline Sample3f uniformSampleCone(float u, float v, float angle, const float3& N) {
-    Sample3f s = uniformSampleCone(u, v, angle);
-    return Sample3f(frameZ(N) * s.value, s.density);
+inline DirectionSample uniformSampleCone(real u, real v, real angle, const real3& N) {
+    DirectionSample s = uniformSampleCone(u, v, angle);
+    return DirectionSample(frameZ(N) * s.value(), s.density());
 }
 
 /*! Computes the probability density of uniform spherical cone sampling. */
-inline float uniformSampleConePDF(const float3& s, float angle, const float3& N) {
-    return dot(s, N) < cos(angle) ? 0.0f : 1.f / (four_pi<float>() * sqr(sin(0.5f * angle)));
+inline real uniformSampleConePDF(const real3& s, real angle, const real3& N) {
+    return dot(s, N) < cos(angle) ? 0.0f : 1.f / (four_pi<real>() * sqr(sin(0.5f * angle)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,25 +193,25 @@ inline float uniformSampleConePDF(const float3& s, float angle, const float3& N)
 ////////////////////////////////////////////////////////////////////////////////
 
 /*! Uniform sampling of triangle. */
-inline float3 uniformSampleTriangle(float u, float v, const float3& A, const float3& B, const float3& C) {
-    float su = sqrt(u);
+inline real3 uniformSampleTriangle(real u, real v, const real3& A, const real3& B, const real3& C) {
+    real su = sqrt(u);
     return C + (1.0f - su) * (A - C) + (v * su) * (B - C);
 }
 
-inline float2 uniformSampleTriangleUVs(float u, float v, const float3& A, const float3& B, const float3& C) {
-    float su = sqrt(u);
-    return float2(1.f - su, v * su);
+inline real2 uniformSampleTriangleUVs(real u, real v, const real3& A, const real3& B, const real3& C) {
+    real su = sqrt(u);
+    return real2(1.f - su, v * su);
 }
 
 // Uniform sample a spherical triangle.
 // A, B and C must be located on the unit sphere centered on (0, 0, 0)
-// Implements the algorithm described in "Stratefied Sampling of Spherical Triangles" [Arvo95]
-Sample3f uniformSampleSphericalTriangle(float e1, float e2,
-                                        const float3& A, const float3& B, const float3& C);
+// Implements the algorithm described in "Stratified Sampling of Spherical Triangles" [Arvo95]
+DirectionSample uniformSampleSphericalTriangle(real e1, real e2,
+                                        const real3& A, const real3& B, const real3& C);
 
-float sphericalTriangleArea(const float3& A, const float3& B, const float3& C);
+real sphericalTriangleArea(const real3& A, const real3& B, const real3& C);
 
-inline float uniformSampleSphericalTrianglePDF(const float3& A, const float3& B, const float3& C) {
+inline real uniformSampleSphericalTrianglePDF(const real3& A, const real3& B, const real3& C) {
     return 1.f / sphericalTriangleArea(A, B, C);
 }
 
@@ -220,21 +220,21 @@ inline float uniformSampleSphericalTrianglePDF(const float3& A, const float3& B,
 ////////////////////////////////////////////////////////////////////////////////
 
 /*! Uniform sampling of disk. */
-inline float2 uniformSampleDisk(const float2& sample, float radius) {
-  const float r = sqrt(sample.x);
-  const float theta = two_pi<float>() * sample.y;
-  return radius * r * float2(cos(theta), sin(theta));
+inline real2 uniformSampleDisk(const real2& sample, real radius) {
+  const real r = sqrt(sample.x);
+  const real theta = two_pi<real>() * sample.y;
+  return radius * r * real2(cos(theta), sin(theta));
 }
 
-inline float uvToDualParaboloidPDF(float pdfWrtUV) {
+inline real uvToDualParaboloidPDF(real pdfWrtUV) {
     // TODO: I can't understand why i need to multiply
-    // by two_pi but else it doesnt work
-    return two_pi<float>() * pdfWrtUV * 0.125f;
+    // by two_pi but else it does not work
+    return two_pi<real>() * pdfWrtUV * 0.125f;
 }
 
-inline float dualParaboloidJacobian(const float2& uv) {
+inline real dualParaboloidJacobian(const real2& uv) {
     auto N = getDualParaboloidNormal(uv);
-    auto ndc = float2(N);
+    auto ndc = real2(N);
     if(dot(ndc, ndc) > 1.f) {
         return 0.f;
     }
@@ -242,7 +242,7 @@ inline float dualParaboloidJacobian(const float2& uv) {
     return 8.f / (d * d * d);
 }
 
-inline float dualParaboloidToSolidAnglePDF(float pdfWrtDualParaboloid, const float2& uv) {
+inline real dualParaboloidToSolidAnglePDF(real pdfWrtDualParaboloid, const real2& uv) {
     auto jacobian = dualParaboloidJacobian(uv);
     if(jacobian == 0.f) {
         return 0.f;
@@ -250,23 +250,23 @@ inline float dualParaboloidToSolidAnglePDF(float pdfWrtDualParaboloid, const flo
     return pdfWrtDualParaboloid / jacobian;
 }
 
-inline float uvToSphericalAnglesPDF(float pdfWrtUV) {
-    return pdfWrtUV * one_over_two_pi<float>() * one_over_pi<float>();
+inline real uvToSphericalAnglesPDF(real pdfWrtUV) {
+    return pdfWrtUV * one_over_two_pi<real>() * one_over_pi<real>();
 }
 
-inline float sphericalAnglesToSolidAnglePDF(float pdfWrtPhiTheta, float rcpSinTheta) {
+inline real sphericalAnglesToSolidAnglePDF(real pdfWrtPhiTheta, real rcpSinTheta) {
     return pdfWrtPhiTheta * rcpSinTheta;
 }
 
-inline float solidAngleToAreaPDF(float pdfWrtSolidAngle,
-                                 float rcpSqrDist,
-                                 float normalDotProduct) {
+inline real solidAngleToAreaPDF(real pdfWrtSolidAngle,
+                                 real rcpSqrDist,
+                                 real normalDotProduct) {
     return pdfWrtSolidAngle * max(0.f, normalDotProduct) * rcpSqrDist;
 }
 
-inline float areaToSolidAnglePDF(float pdfWrtArea,
-                                 float sqrDist,
-                                 float normalDotProduct) {
+inline real areaToSolidAnglePDF(real pdfWrtArea,
+                                 real sqrDist,
+                                 real normalDotProduct) {
     return normalDotProduct <= 0.f ?
                 0.f : pdfWrtArea * sqrDist / normalDotProduct;
 }

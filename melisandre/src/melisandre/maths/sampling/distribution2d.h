@@ -9,7 +9,7 @@ namespace mls
     }
 
     template<typename Functor>
-    void buildDistribution2D(const Functor& function, float* pBuffer, size_t width, size_t height) {
+    void buildDistribution2D(const Functor& function, real* pBuffer, size_t width, size_t height) {
         auto rowCDFSize = width + 1;
         auto colCDFSize = height + 1;
 
@@ -24,11 +24,11 @@ namespace mls
         buildDistribution1D([&](uint32_t y) { return pBuffer[y]; }, pBuffer, height);
     }
 
-    Sample2f sampleContinuousDistribution2D(const float* pBuffer, size_t width, size_t height, const float2& s2D);
+    PlaneSample sampleContinuousDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D);
 
-    Sample2u sampleDiscreteDistribution2D(const float* pBuffer, size_t width, size_t height, const float2& s2D);
+    Discrete2DSample sampleDiscreteDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D);
 
-    float pdfContinuousDistribution2D(const float* pBuffer, size_t width, size_t height, const float2& point);
+    real pdfContinuousDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& point);
 
-    float pdfDiscreteDistribution2D(const float* pBuffer, size_t width, size_t height, const uint2& pixel);
+    real pdfDiscreteDistribution2D(const real* pBuffer, size_t width, size_t height, const uint2& pixel);
 }

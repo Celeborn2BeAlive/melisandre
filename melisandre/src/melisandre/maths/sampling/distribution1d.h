@@ -21,10 +21,10 @@ inline size_t getDistribution1DBufferSize(size_t size) {
 // note: it is safe for function(i) to returns pCDF[i], so the buffer can be used to
 // contain preprocessed weights as long as function(i) doesn't used pCDF[j] for j < i
 template<typename Functor>
-void buildDistribution1D(const Functor& function, float* pCDF, size_t size,
-                         float* pSum = nullptr) {
+void buildDistribution1D(const Functor& function, real* pCDF, size_t size,
+                         real* pSum = nullptr) {
     // Compute CDF
-    float sum = 0.f;
+    real sum = 0.f;
     for(auto i = 0u; i < size; ++i) {
         auto tmp = function(i); // Call the function before erarsing pCDF[i] in case the function use this value
         pCDF[i] = sum; // Erase pCDF[i] with the partial sum
@@ -46,24 +46,24 @@ void buildDistribution1D(const Functor& function, float* pCDF, size_t size,
     }
 }
 
-Sample1f sampleContinuousDistribution1D(const float* pCDF, size_t size, float s1D);
+LineSample sampleContinuousDistribution1D(const real* pCDF, size_t size, real s1D);
 
-Sample1u sampleDiscreteDistribution1D(const float* pCDF, size_t size, float s1D);
+Discrete1DSample sampleDiscreteDistribution1D(const real* pCDF, size_t size, real s1D);
 
-float pdfContinuousDistribution1D(const float* pCDF, size_t size, float x);
+real pdfContinuousDistribution1D(const real* pCDF, size_t size, real x);
 
-float pdfDiscreteDistribution1D(const float* pCDF, uint32_t idx);
+real pdfDiscreteDistribution1D(const real* pCDF, uint32_t idx);
 
-float cdfDiscreteDistribution1D(const float* pCDF, uint32_t idx);
+real cdfDiscreteDistribution1D(const real* pCDF, uint32_t idx);
 
-inline const bool isDiscreteCDF(const float* pCDF, size_t size) {
+inline const bool isDiscreteCDF(const real* pCDF, size_t size) {
     return pCDF[size] > 0.f;
 }
 
 template<typename GetCDFPtrFunction>
-float pdfCombinedDiscreteDistribution1D(size_t distributionCount, const GetCDFPtrFunction& getCDFPtr, uint32_t idx) {
+real pdfCombinedDiscreteDistribution1D(size_t distributionCount, const GetCDFPtrFunction& getCDFPtr, uint32_t idx) {
     auto computeUnormalizedCDF = [&](uint32_t idx) {
-        float sum = 0.f;
+        real sum = 0.f;
         for(auto i = 0u; i < distributionCount; ++i) {
             sum += getCDFPtr(i)[idx];
         }
@@ -73,25 +73,25 @@ float pdfCombinedDiscreteDistribution1D(size_t distributionCount, const GetCDFPt
 }
 
 template<typename GetCDFPtrFunction>
-Sample1u sampleCombinedDiscreteDistribution(std::size_t distributionCount, const GetCDFPtrFunction& getCDFPtr, std::size_t sampleCount, float s1D) {
+Discrete1DSample sampleCombinedDiscreteDistribution(std::size_t distributionCount, const GetCDFPtrFunction& getCDFPtr, std::size_t sampleCount, real s1D) {
     struct IteratorData {
         uint32_t m_nDistributionCount = 0u;
         const GetCDFPtrFunction* m_pGetCDFPtr = nullptr;
         uint32_t m_nSampleCount = 0u;
-        float m_fRcpDistributionCount = 1.f / m_nDistributionCount;
+        real m_fRcpDistributionCount = 1.f / m_nDistributionCount;
 
         IteratorData(size_t distributionCount, const GetCDFPtrFunction* getCDFPtr, std::size_t sampleCount):
             m_nDistributionCount(distributionCount), m_pGetCDFPtr(getCDFPtr), m_nSampleCount(sampleCount) {
         }
     };
 
-    struct iterator: public std::iterator<std::forward_iterator_tag, float, std::ptrdiff_t, const float*, const float> {
+    struct iterator: public std::iterator<std::forward_iterator_tag, real, std::ptrdiff_t, const real*, const real> {
         iterator(const IteratorData* pData, std::size_t currentElement):
             m_pData(pData), m_nCurrentElement(currentElement) {
         }
 
-        float computeCurrentValue() const {
-            float sum = 0.f;
+        real computeCurrentValue() const {
+            real sum = 0.f;
             for(auto i = 0u; i < m_pData->m_nDistributionCount; ++i) {
                 sum += (*m_pData->m_pGetCDFPtr)(i)[m_nCurrentElement];
             }
@@ -129,7 +129,7 @@ Sample1u sampleCombinedDiscreteDistribution(std::size_t distributionCount, const
     iterator begin { &data, 0u }, end { &data, sampleCount };
 
     if(end.computeCurrentValue() == 0.f) {
-        return Sample1u { 0u, 0.f };
+        return Discrete1DSample { 0u, 0.f };
     }
 
     auto it = std::upper_bound(begin, end, s1D);
@@ -137,7 +137,7 @@ Sample1u sampleCombinedDiscreteDistribution(std::size_t distributionCount, const
 
     auto pdf = pdfCombinedDiscreteDistribution1D(distributionCount, getCDFPtr, i);
 
-    return Sample1u(i, pdf);
+    return Discrete1DSample(i, pdf);
 }
 
 }

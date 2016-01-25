@@ -2,7 +2,7 @@
 
 namespace mls {
 
-float sphericalTriangleArea(const float3& A, const float3& B, const float3& C) {
+real sphericalTriangleArea(const real3& A, const real3& B, const real3& C) {
     auto normalAB = normalize(cross(A, B));
     auto normalBC = normalize(cross(B, C));
     auto normalCA = normalize(cross(C, A));
@@ -15,11 +15,11 @@ float sphericalTriangleArea(const float3& A, const float3& B, const float3& C) {
     auto gamma = acos(cosGamma); // angle at C
 
     // Spherical triangle area
-    return alpha + beta + gamma - pi<float>();
+    return alpha + beta + gamma - pi<real>();
 }
 
-Sample3f uniformSampleSphericalTriangle(float e1, float e2, const float3& A, const float3& B, const float3& C) {
-    static auto normalizedOrthogonalComponent = [](const float3& x, const float3& y) {
+DirectionSample uniformSampleSphericalTriangle(real e1, real e2, const real3& A, const real3& B, const real3& C) {
+    static auto normalizedOrthogonalComponent = [](const real3& x, const real3& y) {
         return normalize(x - dot(x, y) * y);
     };
 
@@ -44,9 +44,9 @@ Sample3f uniformSampleSphericalTriangle(float e1, float e2, const float3& A, con
     auto gamma = acos(cosGamma); // angle at C
 
     // Spherical triangle area
-    auto area = alpha + beta + gamma - pi<float>();
+    auto area = alpha + beta + gamma - pi<real>();
     if(area == 0.f) {
-        return Sample3f(zero<float3>(), 0.f);
+        return DirectionSample{ zero<real3>(), 0.f };
     }
 
     auto newArea = e1 * area; // Sample sub-triangle
@@ -58,7 +58,7 @@ Sample3f uniformSampleSphericalTriangle(float e1, float e2, const float3& A, con
     auto u = t - cosAlpha;
     auto v = s + sinAlpha * cosC;
 
-    float q = ((v * t - u * s) * cosAlpha - v) / ((v * s + u * t) * sinAlpha);
+    real q = ((v * t - u * s) * cosAlpha - v) / ((v * s + u * t) * sinAlpha);
 
     auto newC = q * A + sqrt(1 - sqr(q)) * normalizedOrthogonalComponent(C, A);
 
@@ -66,7 +66,7 @@ Sample3f uniformSampleSphericalTriangle(float e1, float e2, const float3& A, con
 
     auto P = z * B + sqrt(1 - sqr(z)) * normalizedOrthogonalComponent(newC, B);
 
-    return Sample3f(P, 1.f / area);
+    return DirectionSample{ P, 1.f / area };
 }
 
 }

@@ -9,11 +9,11 @@ static const size_t SAMPLING_GRID_WIDTH = 4096;
 static const size_t SAMPLING_GRID_HEIGHT = 2048;
 
 TEST(SphericalTriangleSamplingTest, UnitLengthTest) {
-    auto A = float3(1, 0, 0), B = float3(0, 1, 0), C = normalize(float3(0, -1, 1));
+    auto A = real3(1, 0, 0), B = real3(0, 1, 0), C = normalize(real3(0, -1, 1));
 
     for(const auto& uv: makeUVGridTest(SAMPLING_GRID_WIDTH, SAMPLING_GRID_HEIGHT)) {
         auto dirSample = uniformSampleSphericalTriangle(uv.x, uv.y, A, B, C);
-        ASSERT_FLOAT_EQ(length(dirSample.value), 1.f);
+        ASSERT_FLOAT_EQ(length(dirSample.value()), 1);
     }
 }
 

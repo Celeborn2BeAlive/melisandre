@@ -22,36 +22,36 @@
 
 namespace mls {
 
-Sample1f sampleContinuousDistribution1D(const float* pCDF, size_t size, float s1D) {
+LineSample sampleContinuousDistribution1D(const real* pCDF, size_t size, real s1D) {
     // coarse sampling of the distribution
     auto ptr = std::upper_bound(pCDF, pCDF + size, s1D);
     int i = clamp(int(ptr - pCDF - 1), 0, int(size) - 1);
     // refine sampling linearly by assuming the distribution being a step function
-    float p = pCDF[i + 1] - pCDF[i];
-    float fraction = (s1D - pCDF[i]) / p;
-    return Sample1f(i + fraction, p * size);
+    real p = pCDF[i + 1] - pCDF[i];
+    real fraction = (s1D - pCDF[i]) / p;
+    return LineSample(i + fraction, p * size);
 }
 
-Sample1u sampleDiscreteDistribution1D(const float* pCDF, size_t size, float s1D) {
+Discrete1DSample sampleDiscreteDistribution1D(const real* pCDF, size_t size, real s1D) {
     if(pCDF[size] == 0.f) {
-        return Sample1u(0u, 0.f);
+        return Discrete1DSample(0u, 0.f);
     }
 
     auto ptr = std::upper_bound(pCDF, pCDF + size, s1D);
     int i = clamp(int(ptr - pCDF - 1), 0, int(size) - 1);
-    return Sample1u(i, pCDF[i + 1] - pCDF[i]);
+    return Discrete1DSample(i, pCDF[i + 1] - pCDF[i]);
 }
 
-float pdfContinuousDistribution1D(const float* pCDF, size_t size, float x) {
+real pdfContinuousDistribution1D(const real* pCDF, size_t size, real x) {
     auto i = clamp(int(x), 0, int(size) - 1);
     return (pCDF[i + 1] - pCDF[i]) * size;
 }
 
-float pdfDiscreteDistribution1D(const float* pCDF, uint32_t i) {
+real pdfDiscreteDistribution1D(const real* pCDF, uint32_t i) {
     return (pCDF[i + 1] - pCDF[i]);
 }
 
-float cdfDiscreteDistribution1D(const float* pCDF, uint32_t i) {
+real cdfDiscreteDistribution1D(const real* pCDF, uint32_t i) {
     return pCDF[i];
 }
 

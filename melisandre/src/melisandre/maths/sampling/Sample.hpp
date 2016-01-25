@@ -3,37 +3,50 @@
 #include <ostream>
 #include <melisandre/maths/types.hpp>
 
+#include "measures.hpp"
+
 namespace mls {
-
-struct UnknownMeasure {
-
-};
 
 template<typename T, typename Measure = UnknownMeasure, typename RealType = real>
 struct Sample {
-    T value;
-    RealType density = 0.f;
-
     Sample() = default;
 
     template<typename U, typename Real>
-    Sample(U&& value, Real&& density): value(std::forward<U>(value)), density(std::forward<Real>(density)) {
+    explicit Sample(U&& value, Real&& density): 
+        m_Value(std::forward<U>(value)),
+        m_Density(std::forward<Real>(density)) {
     }
 
     explicit operator bool() const {
-        return density > 0.f;
+        return density > RealType{ 0 };
     }
+
+    const T& value() const {
+        return m_Value;
+    }
+
+    RealType density() const {
+        return m_Density;
+    }
+
+    RealType rcpDensity() const {
+        return m_Density ? 1.f / m_Density : 0;
+    }
+
+private:
+    T m_Value;
+    RealType m_Density = RealType{ 0 };
 };
 
-using Sample1f = Sample<float>;
-using Sample2f = Sample<float2>;
-using Sample3f = Sample<float3>;
-using Sample1u = Sample<uint32_t>;
-using Sample2u = Sample<uint2>;
+using DirectionSample = Sample<real3, SolidAngleMeasure>;
+using PlaneSample = Sample<real2, PlaneMeasure>;
+using LineSample = Sample<real, LineMeasure>;
+using Discrete1DSample = Sample<size_t, DiscreteMeasure>;
+using Discrete2DSample = Sample<size2, DiscreteMeasure>;
 
-template<typename T>
-inline std::ostream& operator <<(std::ostream& out, const Sample<T>& s) {
-    out << "[ " << s.value << ", pdf = " << s.density << " ] ";
+template<typename T, typename Measure, typename RealType>
+inline std::ostream& operator <<(std::ostream& out, const Sample<T, Measure, RealType>& s) {
+    out << "[ " << s.value() << ", pdf = " << s.density() << " ] ";
     return out;
 }
 
