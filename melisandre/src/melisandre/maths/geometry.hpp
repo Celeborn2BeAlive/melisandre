@@ -1,6 +1,8 @@
 #pragma once
 
 #include "glm.hpp"
+#include "types.hpp"
+#include "maths.hpp"
 
 namespace mls {
 
@@ -20,13 +22,19 @@ using glm::inverse;
 using glm::determinant;
 
 template<typename T, typename U>
-inline float distanceSquared(const float3& A, const float3& B) {
-    auto v = B - A;
+inline auto distanceSquared(const T& lhs, const U& rhs) {
+    auto v = rhs - lhs;
     return dot(v, v);
 }
 
-inline float lengthSquared(const float3& v) {
+template<typename T>
+inline auto lengthSquared(const T& v) {
     return dot(v, v);
+}
+
+template<typename T, typename U>
+inline auto absDot(const T& lhs, const U& rhs) {
+    return abs(dot(lhs, rhs));
 }
 
 }
