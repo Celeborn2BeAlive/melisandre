@@ -132,7 +132,7 @@ public:
     void setSeed(uint32_t seed) {
         const auto threadCount = m_RandomGenerators.size();
         for(auto i: range(threadCount)) {
-            m_RandomGenerators[i].setSeed(seed * threadCount + i);
+            m_RandomGenerators[i].setSeed(uint32_t(seed * threadCount + i));
         }
     }
 

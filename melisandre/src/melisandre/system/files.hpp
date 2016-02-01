@@ -82,7 +82,7 @@ public:
     }
 
     bool operator ==(const std::string& other) const {
-        return FilePath { other } == m_FilePath;
+        return other == m_FilePath;
     }
 
     bool operator ==(const char* other) const {

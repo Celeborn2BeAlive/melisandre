@@ -34,12 +34,12 @@ private:
 };
 
 template <typename T>
-inline Range<T> range(T&& start, T&& end) {
+inline Range<T> range(const T& start, const T& end) {
     return Range<T>(std::min(start, end), std::max(start, end));
 }
 
 template<typename T>
-inline Range<T> range(T&& end) {
+inline Range<T> range(const T& end) {
     return range(T(), end);
 }
 

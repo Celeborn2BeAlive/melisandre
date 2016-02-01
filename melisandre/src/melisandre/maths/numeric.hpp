@@ -4,6 +4,8 @@
 
 namespace mls {
 
+using glm::abs;
+
 using glm::radians;
 using glm::degrees;
 

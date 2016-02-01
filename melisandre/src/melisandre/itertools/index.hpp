@@ -3,7 +3,7 @@
 #include "iterator_extractor.hpp"
 #include <iterator>
 
-namespace BnZ {
+namespace mls {
 
 template <typename T>
 class Indexer {

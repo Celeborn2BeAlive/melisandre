@@ -8,10 +8,11 @@
 #include "mappings/dual_paraboloid_mappings.hpp"
 #include "mappings/spherical_mappings.hpp"
 #include "mappings/hemispherical_mappings.hpp"
+#include "numeric.hpp"
 
 namespace mls {
 
-    using glm::abs;
+    
 
 /**
  * @brief cartesianToSpherical
