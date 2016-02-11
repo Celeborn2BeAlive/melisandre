@@ -50,7 +50,7 @@ if(WIN32)
         set(OPENEXR_LIBRARIES ${CMAKE_LIBRARY_PATH}/IlmImf-2_2.lib ${CMAKE_LIBRARY_PATH}/IlmImfUtil-2_2.lib ${CMAKE_LIBRARY_PATH}/Imath-2_2.lib ${CMAKE_LIBRARY_PATH}/IexMath-2_2.lib ${CMAKE_LIBRARY_PATH}/Half.lib ${CMAKE_LIBRARY_PATH}/Iex-2_2.lib ${CMAKE_LIBRARY_PATH}/IlmThread-2_2.lib)
 
         #set(GLFW_LIBRARY glfw3dll.lib)
-        #set(ASSIMP_LIBRARY assimp.lib)
+        set(ASSIMP_LIBRARY ${CMAKE_LIBRARY_PATH}/assimp-vc130-mt.lib)
         set(SYSTEM_LIBRARIES Shlwapi)
         
         #add_definitions(-DGLEW_NO_GLU -DGLEW_STATIC -DNOMINMAX)
