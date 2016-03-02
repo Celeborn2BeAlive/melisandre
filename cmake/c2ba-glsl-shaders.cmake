@@ -45,7 +45,7 @@ macro(c2ba_add_shader_directory directory)
             endif()
 
             add_custom_command(
-                OUTPUT ${EXECUTABLE_OUTPUT_PATH}/shaders/${relative_file}
+                OUTPUT ${SHADER_OUTPUT_PATH}
                 COMMAND ${CMAKE_COMMAND} -E copy ${file} ${SHADER_OUTPUT_PATH}
                 MAIN_DEPENDENCY ${file}
             )

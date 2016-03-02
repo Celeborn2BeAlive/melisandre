@@ -27,7 +27,7 @@ set(MELISANDRE_LIBRARY melisandre)
 file(
     GLOB_RECURSE
     SRC_FILES
-    *.cpp *.hpp *.h
+    *.cpp *.hpp *.h *.glsl
 )
 
 # Not shared library because its a f* pain with visual c++ to work with STL using shared libs
@@ -41,4 +41,7 @@ target_link_libraries(
     ${SYSTEM_LIBRARIES} ${SDL_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${EMBREE_LIBRARIES} ${OPENEXR_LIBRARIES} ${ASSIMP_LIBRARY}
 )
 
+c2ba_add_shader_directory(${CMAKE_CURRENT_SOURCE_DIR}/glsl)
+
 c2ba_group_sources(${CMAKE_CURRENT_SOURCE_DIR}/src/melisandre "")
+c2ba_group_sources(${CMAKE_CURRENT_SOURCE_DIR}/glsl "")
