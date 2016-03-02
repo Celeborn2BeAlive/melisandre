@@ -3,7 +3,7 @@
 namespace mls {
 
 GLFlatShadingPass::GLFlatShadingPass(const GLShaderManager& shaderManager):
-    m_Program(shaderManager.buildProgram({ "deferredShadingPass.vs", "flatDeferredShadingPass.fs"})) {
+    m_Program(shaderManager.buildProgram({ "deferredShadingPass.vs.glsl", "flatDeferredShadingPass.fs.glsl"})) {
 }
 
 void GLFlatShadingPass::render(const GLGBuffer& gBuffer,

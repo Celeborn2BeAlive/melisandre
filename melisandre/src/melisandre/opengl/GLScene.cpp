@@ -1,5 +1,13 @@
 #include "GLScene.hpp"
 
+#include <melisandre/system/logging.hpp>
+#include <assimp/Importer.hpp>
+#include <assimp/ProgressHandler.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
+#include <melisandre/maths/constants.hpp>
+
 namespace mls {
 
 #ifndef USEVERTEXBUFFERUNIFIEDMEMORY
@@ -151,6 +159,123 @@ void GLScene::render(GLMaterialUniforms& uniforms, uint32_t numInstances) const 
 
 #else
 
+static const aiVector3D aiZERO{ 0.f, 0.f, 0.f };
+
+static void loadAssimpGLMesh(const aiMesh* aimesh, size_t materialOffset, GLScene& scene) {
+    auto materialID = materialOffset + aimesh->mMaterialIndex;
+
+    std::vector<GLScene::Vertex> vertices;
+    vertices.reserve(aimesh->mNumVertices);
+
+    for (size_t vertexIdx = 0; vertexIdx < aimesh->mNumVertices; ++vertexIdx) {
+        const aiVector3D* pPosition = aimesh->HasPositions() ? &aimesh->mVertices[vertexIdx] : &aiZERO;
+        const aiVector3D* pNormal = aimesh->HasNormals() ? &aimesh->mNormals[vertexIdx] : &aiZERO;
+        const aiVector3D* pTexCoords = aimesh->HasTextureCoords(0) ? &aimesh->mTextureCoords[0][vertexIdx] : &aiZERO;
+
+        vertices.emplace_back(
+            GLScene::Vertex{
+                float3(pPosition->x, pPosition->y, pPosition->z),
+                float3(pNormal->x, pNormal->y, pNormal->z),
+                float2(pTexCoords->x, pTexCoords->y)
+        });
+    }
+
+    std::vector<GLScene::Triangle> triangles;
+    triangles.reserve(aimesh->mNumFaces);
+
+    for (size_t triangleIdx = 0; triangleIdx < aimesh->mNumFaces; ++triangleIdx) {
+        const aiFace& face = aimesh->mFaces[triangleIdx];
+        triangles.emplace_back(face.mIndices[0], face.mIndices[1], face.mIndices[2]);
+    }
+
+    scene.addTriangleMesh(vertices.data(), vertices.size(), triangles.data(), triangles.size(), materialID);
+}
+
+static void loadAssimpGLMaterial(const aiMaterial* aimaterial, const FilePath& rootDirectoryPath, GLScene& scene) {
+    auto pLogger = getLogger("loadAssimpGLMaterial");
+
+    aiColor3D color;
+
+    aiString ainame;
+    aimaterial->Get(AI_MATKEY_NAME, ainame);
+    std::string name = ainame.C_Str();
+
+    pLogger->verbose(1, "Load material %v", name);
+
+    float3 kd = zero<float3>(), ks = zero<float3>();
+    float shininess = 0.f;
+
+    if (AI_SUCCESS == aimaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color)) {
+        kd = Vec3f(color.r, color.g, color.b);
+    }
+
+    //aiString path;
+
+    /*if (AI_SUCCESS == aimaterial->GetTexture(aiTextureType_DIFFUSE, 0, &path,
+        nullptr, nullptr, nullptr, nullptr, nullptr)) {
+        pLogger->verbose(1, "Load texture %v", (basePath + path.data));
+        material.m_DiffuseReflectanceTexture = loadImage(basePath + path.data, true);
+    }*/
+
+    if (AI_SUCCESS == aimaterial->Get(AI_MATKEY_COLOR_SPECULAR, color)) {
+        ks = Vec3f(color.r, color.g, color.b);
+    }
+
+    /*if (AI_SUCCESS == aimaterial->GetTexture(aiTextureType_SPECULAR, 0, &path,
+        nullptr, nullptr, nullptr, nullptr, nullptr)) {
+        pLogger->verbose(1, "Load texture %v", (basePath + path.data));
+        material.m_GlossyReflectanceTexture = loadImage(basePath + path.data, true);
+    }*/
+
+    aimaterial->Get(AI_MATKEY_SHININESS, shininess);
+
+    /*if (AI_SUCCESS == aimaterial->GetTexture(aiTextureType_SHININESS, 0, &path,
+        nullptr, nullptr, nullptr, nullptr, nullptr)) {
+        pLogger->verbose(1, "Load texture %v", (basePath + path.data));
+        material.m_ShininessTexture = loadImage(basePath + path.data, true);
+    }*/
+
+    scene.addMaterial(kd, ks, shininess, nullptr, nullptr, nullptr);
+}
+
+void loadAssimpGLScene(const std::string& filePath, GLScene& scene) {
+    auto pLogger = getLogger("loadAssimpGLScene");
+
+    Assimp::Importer importer;
+
+    pLogger->info("Loading geometry of %v with Assimp.", filePath);
+
+    //importer.SetExtraVerbose(true); // TODO: add logger and check for sponza
+    const aiScene* aiscene = importer.ReadFile(filePath.c_str(),
+        aiProcess_Triangulate |
+        aiProcess_GenNormals |
+        aiProcess_FlipUVs);
+    if (aiscene) {
+        pLogger->info("Number of meshes = %v", aiscene->mNumMeshes);
+
+        auto materialOffset = scene.getMaterialCount();
+
+        FilePath path = FilePath{ filePath }.directory();
+
+        for (size_t materialIdx = 0; materialIdx < aiscene->mNumMaterials; ++materialIdx) {
+            loadAssimpGLMaterial(aiscene->mMaterials[materialIdx], path, scene);
+        }
+
+        for (size_t meshIdx = 0u; meshIdx < aiscene->mNumMeshes; ++meshIdx) {
+            loadAssimpGLMesh(aiscene->mMeshes[meshIdx], materialOffset, scene);
+        }
+    }
+    else {
+        pLogger->error("Assimp loading error on file %v: %v", filePath, importer.GetErrorString());
+    }
+}
+
+GLScene loadAssimpGLScene(const std::string& filePath) {
+    GLScene scene;
+    loadAssimpGLScene(filePath, scene);
+    return scene;
+}
+
 //GLScene::GLScene(const SceneGeometry& geometry) {
 //    m_TriangleMeshs.reserve(geometry.getMeshCount());
 //    for (const auto& mesh : geometry.getMeshs()) {
@@ -214,50 +339,62 @@ void GLScene::render(GLMaterialUniforms& uniforms, uint32_t numInstances) const 
 //    glBindVertexArray(0);
 //}
 
-//void GLScene::GLTriangleMesh::render(uint32_t numInstances) const {
-//    m_VAO.bind();
-//    glDrawElementsInstanced(GL_TRIANGLES, m_IBO.size() * 3,
-//                            GL_UNSIGNED_INT, 0, numInstances);
-//}
+void GLScene::TriangleMesh::render(size_t numInstances) const {
+    m_VAO.bind();
+    glDrawElementsInstanced(GL_TRIANGLES, m_IBO.size() * 3,
+        GL_UNSIGNED_INT, 0, numInstances);
+}
 
 //GLScene::GLMaterial::GLMaterial(const Material &material, int kdTextureID, int ksTextureID, int shininessTextureID):
 //    m_Kd(material.m_DiffuseReflectance), m_Ks(material.m_GlossyReflectance), m_Shininess(material.m_Shininess),
 //    m_KdTextureID(kdTextureID), m_KsTextureID(ksTextureID), m_ShininessTextureID(shininessTextureID) {
 //}
 
-//void GLScene::render(uint32_t numInstances) const {
-//    for (const auto& mesh : m_TriangleMeshs) {
-//        mesh.render(numInstances);
-//    }
-//    glBindVertexArray(0);
-//}
-//
-//void GLScene::render(GLMaterialUniforms& uniforms, uint32_t numInstances) const {
-//    for (const auto& mesh : m_TriangleMeshs) {
-//        const auto& material = m_Materials[mesh.m_MaterialID];
-//        uniforms.uKd.set(material.m_Kd);
-//        uniforms.uKs.set(material.m_Ks);
-//        uniforms.uShininess.set(material.m_Shininess);
-//
-//        if(material.m_KdTextureID >= 0) {
-//            m_Textures[material.m_KdTextureID].bind(0u);
-//            uniforms.uKdSampler.set(0u);
-//        }
-//
-//        if(material.m_KsTextureID >= 0) {
-//            m_Textures[material.m_KsTextureID].bind(1u);
-//            uniforms.uKsSampler.set(1u);
-//        }
-//
-//        if(material.m_ShininessTextureID >= 0) {
-//            m_Textures[material.m_ShininessTextureID].bind(2u);
-//            uniforms.uShininessSampler.set(2u);
-//        }
-//
-//        mesh.render(numInstances);
-//    }
-//    glBindVertexArray(0);
-//}
+void GLScene::render(size_t numInstances) const {
+    for (const auto& mesh : m_TriangleMeshs) {
+        mesh.render(numInstances);
+    }
+    glBindVertexArray(0);
+}
+
+void GLScene::render(GLMaterialUniforms& uniforms, uint32_t numInstances) const {
+    for (const auto& mesh : m_TriangleMeshs) {
+        const auto& material = m_Materials[mesh.m_MaterialID];
+        uniforms.uKd.set(material.m_Kd);
+        uniforms.uKs.set(material.m_Ks);
+        uniforms.uShininess.set(material.m_Shininess);
+
+        if (material.m_KdTextureID >= 0) {
+            m_Textures[material.m_KdTextureID].bind(0u);
+            uniforms.uKdSampler.set(0u);
+        }
+
+        if (material.m_KsTextureID >= 0) {
+            m_Textures[material.m_KsTextureID].bind(1u);
+            uniforms.uKsSampler.set(1u);
+        }
+
+        if (material.m_ShininessTextureID >= 0) {
+            m_Textures[material.m_ShininessTextureID].bind(2u);
+            uniforms.uShininessSampler.set(2u);
+        }
+
+        mesh.render(numInstances);
+    }
+    glBindVertexArray(0);
+}
+
+void GLScene::addMaterial(Vec3f Kd, Vec3f Ks, float shininess,
+    const Image* KdTexture, const Image* KsTexture, const Image* shininessTexture) {
+    m_Materials.emplace_back(Kd, Ks, shininess, -1, -1, -1);
+}
+
+void GLScene::addTriangleMesh(
+    const Vertex* pVertices, size_t vertexCount,
+    const Triangle* pTriangles, size_t triangleCount,
+    size_t materialID) {
+    m_TriangleMeshs.emplace_back(pVertices, vertexCount, pTriangles, triangleCount, materialID);
+}
 
 #endif
 

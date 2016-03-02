@@ -11,7 +11,7 @@ class GLScreenFramebuffer {
 public:
     static const Vec4u NULL_OBJECT_ID;
 
-    bool init(size_t width, size_t height);
+    bool init(size_t width, size_t height, const float4* pixels = nullptr);
 
     bool init(const Vec2u& size) {
         return init(size.x, size.y);

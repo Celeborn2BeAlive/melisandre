@@ -3,7 +3,7 @@
 namespace mls {
 
 GLGBufferRenderPass::GLGBufferRenderPass(const GLShaderManager& shaderManager):
-    m_Program(shaderManager.buildProgram({ "geometryPass.vs", "geometryPass.fs" })){
+    m_Program(shaderManager.buildProgram({ "geometryPass.vs.glsl", "geometryPass.fs.glsl" })){
 }
 
 void GLGBufferRenderPass::render(const Mat4f& projMatrix, const Mat4f& viewMatrix, float zFar,

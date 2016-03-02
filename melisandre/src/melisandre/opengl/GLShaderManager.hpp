@@ -23,7 +23,7 @@ namespace mls {
         GLProgram buildProgram(const std::vector<std::string>& shaderFilePaths) const;
 
     private:
-        //void recursiveCompileShaders(const FilePath& relativePath, const Directory& dir);
+        void recursiveCompileShaders(const FilePath& relativePath, const FilePath& dir);
 
         std::unordered_map<std::string, GLenum> m_ExtToType;
         std::unordered_map<std::string, GLShader> m_ShadersMap;

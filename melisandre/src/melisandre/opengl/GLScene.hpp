@@ -129,47 +129,87 @@ private:
 
 class GLScene {
 public:
+    struct Vertex {
+        float3 m_Position;
+        float3 m_Normal;
+        float2 m_TexCoords;
+    };
+    using Triangle = uint3;
+
     //GLScene(const SceneGeometry& geometry);
 
-    void render(uint32_t numInstances = 1) const;
+    void render(size_t numInstances = 1) const;
 
     void render(GLMaterialUniforms& uniforms, uint32_t numInstances = 1) const;
+
+    void addMaterial(Vec3f Kd, Vec3f Ks, float shininess, 
+        const Image* KdTexture, const Image* KsTexture, const Image* shininessTexture);
+
+    void addTriangleMesh(
+        const Vertex* pVertices, size_t vertexCount,
+        const Triangle* pTriangles, size_t triangleCount,
+        size_t materialID);
+
+    size_t getMaterialCount() const {
+        return m_Materials.size();
+    }
+
+    size_t getTriangleMeshCount() const {
+        return m_TriangleMeshs.size();
+    }
+
 private:
-    //struct GLTriangleMesh {
-    //    GLBufferStorage<TriangleMesh::Vertex> m_VBO;
-    //    GLBufferStorage<TriangleMesh::Triangle> m_IBO;
-    //    GLVertexArray m_VAO;
-    //    uint32_t m_MaterialID;
+    struct TriangleMesh {
+        GLBufferStorage<Vertex> m_VBO;
+        GLBufferStorage<Triangle> m_IBO;
+        GLVertexArray m_VAO;
+        size_t m_MaterialID;
 
-    //    GLTriangleMesh() = default;
+        TriangleMesh(const Vertex* pVertices, size_t vertexCount,
+            const Triangle* pTriangles, size_t triangleCount, size_t materialID) :
+            m_VBO(vertexCount, pVertices), m_IBO(triangleCount, pTriangles), m_MaterialID(materialID) {
+            m_VAO.enableVertexAttrib(0);
+            m_VAO.enableVertexAttrib(1);
+            m_VAO.enableVertexAttrib(2);
+            m_VAO.vertexAttribOffset(m_VBO.glId(), 0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                MLS_OFFSETOF(Vertex, m_Position));
+            m_VAO.vertexAttribOffset(m_VBO.glId(), 1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                MLS_OFFSETOF(Vertex, m_Normal));
+            m_VAO.vertexAttribOffset(m_VBO.glId(), 2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                MLS_OFFSETOF(Vertex, m_TexCoords));
 
-    //    GLTriangleMesh(GLTriangleMesh&& rvalue) : m_VBO(std::move(rvalue.m_VBO)), m_IBO(std::move(rvalue.m_IBO)),
-    //        m_VAO(std::move(rvalue.m_VAO)), m_MaterialID(rvalue.m_MaterialID) {
-    //    }
+            m_VAO.bind();
+            m_IBO.bind(GL_ELEMENT_ARRAY_BUFFER);
+            glBindVertexArray(0);
+        }
 
-    //    //GLTriangleMesh(const TriangleMesh& mesh);
+        void render(size_t numInstances) const;
+    };
 
-    //    void render(uint32_t numInstances) const;
-    //};
+    std::vector<GLTexture2D> m_Textures; // #todo: asset manager
+    std::unordered_map<const Image*, size_t> m_TextureCache;
 
-    std::vector<GLTexture2D> m_Textures;
-    std::unordered_map<Shared<Image>, int> m_TextureCache;
+    struct Material {
+        float3 m_Kd;
+        float3 m_Ks;
+        float m_Shininess;
 
-    //struct GLMaterial {
-    //    Vec3f m_Kd;
-    //    Vec3f m_Ks;
-    //    float m_Shininess;
+        int m_KdTextureID = -1;
+        int m_KsTextureID = -1;
+        int m_ShininessTextureID = -1;
 
-    //    int m_KdTextureID = -1;
-    //    int m_KsTextureID = -1;
-    //    int m_ShininessTextureID = -1;
+        Material(float3 kd, float3 ks, float shininess, int kdTextureID, int ksTextureID, int shininessTextureID) :
+            m_Kd(kd), m_Ks(ks), m_Shininess(shininess), m_KdTextureID(kdTextureID), m_KsTextureID(ksTextureID), m_ShininessTextureID(shininessTextureID) {
+        }
+    };
 
-    //    GLMaterial(const Material& material, int kdTextureID, int ksTextureID, int shininessTextureID);
-    //};
-
-    //std::vector<GLTriangleMesh> m_TriangleMeshs;
-    //std::vector<GLMaterial> m_Materials;
+    std::vector<TriangleMesh> m_TriangleMeshs;
+    std::vector<Material> m_Materials;
 };
+
+void loadAssimpGLScene(const std::string& filePath, GLScene& scene);
+
+GLScene loadAssimpGLScene(const std::string& filePath);
 
 #endif
 

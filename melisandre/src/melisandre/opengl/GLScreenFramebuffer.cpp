@@ -6,12 +6,12 @@ namespace mls {
 
 const Vec4u GLScreenFramebuffer::NULL_OBJECT_ID = Vec4u(0u);
 
-bool GLScreenFramebuffer::init(size_t width, size_t height) {
+bool GLScreenFramebuffer::init(size_t width, size_t height, const float4* pixels) {
     m_nWidth = width;
     m_nHeight = height;
 
     m_ColorTexture.setImage(0, GL_RGBA32F, GLsizei(width), GLsizei(height), 0,
-                               GL_RGBA, GL_FLOAT, nullptr);
+                               GL_RGBA, GL_FLOAT, pixels);
     m_ColorTexture.setMinFilter(GL_NEAREST);
     m_ColorTexture.setMagFilter(GL_NEAREST);
 
