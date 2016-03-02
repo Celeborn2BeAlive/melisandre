@@ -1,5 +1,6 @@
 #include <melisandre/melisandre.hpp>
 #include <melisandre/opengl/opengl.hpp>
+#include <melisandre/maths/types.hpp>
 
 #include <melisandre/viewer/WindowManager.hpp>
 #include <glm/glm.hpp>
@@ -16,6 +17,8 @@
 #pragma warning(pop)
 
 #include <melisandre/viewer/imgui/imgui.h>
+#include <melisandre/maths/geometry.hpp>
+#include <melisandre/opengl/GLScreenFramebuffer.hpp>
 
 struct EXRSetGlobalThreadCountRAII {
     EXRSetGlobalThreadCountRAII() {
@@ -30,6 +33,8 @@ struct EXRSetGlobalThreadCountRAII {
 struct Vec4f {
     float x, y, z, w;
 };
+
+using namespace mls;
 
 void loadEXRImage(const std::string& filepath, bool useCache) {
     EXRSetGlobalThreadCountRAII raii;
@@ -53,25 +58,25 @@ void loadEXRImage(const std::string& filepath, bool useCache) {
 
     frameBuffer.insert("R",
         Imf::Slice(Imf::FLOAT,
-            basePtr + offsetof(Vec4f, x),
+            basePtr + offsetof(float4, x),
             xStride, yStride,
             xSampling, ySampling,
             fillValue));
     frameBuffer.insert("G",
         Imf::Slice(Imf::FLOAT,
-            basePtr + offsetof(Vec4f, y),
+            basePtr + offsetof(float4, y),
             xStride, yStride,
             xSampling, ySampling,
             fillValue));
     frameBuffer.insert("B",
         Imf::Slice(Imf::FLOAT,
-            basePtr + offsetof(Vec4f, z),
+            basePtr + offsetof(float4, z),
             xStride, yStride,
             xSampling, ySampling,
             fillValue));
     frameBuffer.insert("rcpWeight",
         Imf::Slice(Imf::FLOAT,
-            basePtr + offsetof(Vec4f, w),
+            basePtr + offsetof(float4, w),
             xStride, yStride,
             xSampling, ySampling,
             fillValue));
@@ -312,8 +317,26 @@ static void ShowExampleAppCustomNodeGraph(ImVector<Node>& nodes, ImVector<NodeLi
 using namespace mls;
 
 #include <melisandre/system/logging.hpp>
+#include <melisandre/opengl/GLScene.hpp>
+#include <melisandre/opengl/GLShaderManager.hpp>
+#include <melisandre/opengl/GLGBuffer.hpp>
+#include <melisandre/opengl/GLFlatShadingPass.hpp>
+#include <melisandre/opengl/GLGBufferRenderPass.hpp>
+
+#include <melisandre/viewer/ViewController.hpp>
+
+#include <melisandre/utils/EventDispatcher.hpp>
 
 int main(int argc, char* argv[]) {
+    size_t x = 1500;
+    EventDispatcher<void(std::string)> test1;
+    auto listener = test1.addListener([&](std::string str) {
+        std::cerr << "Dat string : " << str << std::endl;
+    });
+
+    test1.dispatch("lol1");
+    test1.dispatch("lol2");
+
     mls::helloWorld();
 
     mls::initLogging(argc, argv);
@@ -321,31 +344,43 @@ int main(int argc, char* argv[]) {
     //Initialization flag
     bool success = true;
 
-    WindowManager windowManager(4, 5);
+    WindowManager windowManager{ 4, 5 };
 
     auto window1 = windowManager.createWindow("\"The night is dark and full of terrors...but the fire burns them all away.\" - Melisandre", 1280, 720);
-    //auto window2 = windowManager.createWindow("SDL Tutorial2", 512, 512);
+    auto window2 = windowManager.createWindow("SDL Tutorial2", 1280, 720);
 
     mls::initOpenGL();
 
+
+
+
     GLuint vbo;
     glGenBuffers(1, &vbo);
-    glm::vec2 vertex[] = {
-        glm::vec2(-1, -1),
-        glm::vec2(1, -1),
-        glm::vec2(1,  1),
-        glm::vec2(-1, -1),
-        glm::vec2(1,  1),
-        glm::vec2(-1,  1)
+    GLScene::Vertex triangle[] = {
+        { float3(-1, -1, -5), float3(0, 0, 1), float2(0, 0) },
+        { float3(1, -1, -6.5), float3(0, 0, 1), float2(0, 0) },
+        { float3(0, 1, -6.5), float3(0, 0, 1), float2(0, 0) }
     };
+    //glm::vec3 vertex[] = {
+    //    glm::vec3(-1, -1, -5),
+    //    glm::vec3(1, -1, -5),
+    //    glm::vec3(1,  1, -5),
+    //    glm::vec3(-1, -1, -5),
+    //    glm::vec3(1,  1, -5),
+    //    glm::vec3(-1,  1, -5)
+    //};
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex), vertex, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), triangle, GL_STATIC_DRAW);
 
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GLScene::Vertex),
+        (const GLvoid*) MLS_OFFSETOF(GLScene::Vertex, m_Position));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GLScene::Vertex),
+        (const GLvoid*) MLS_OFFSETOF(GLScene::Vertex, m_Normal));
 
     auto gProgramID = glCreateProgram();
 
@@ -417,8 +452,40 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    ViewController viewController;
+
     RTCDevice device = rtcNewDevice();
     RTCScene scene = rtcDeviceNewScene(device, RTC_SCENE_STATIC, RTC_INTERSECT1);
+
+    GLShaderManager shaderManager;
+    shaderManager.addDirectory(FilePath{ argv[0] }.directory() + FilePath{ "glsl" });
+
+    GLGBufferRenderPass gbufferRenderPass{ shaderManager };
+    GLFlatShadingPass flatShadingPass{ shaderManager };
+
+    GLGBuffer gBuffer;
+    gBuffer.init(1280, 720);
+
+    auto zFar = 3000.f;
+    auto zNear = zFar / 1000.f;
+    auto projMatrix = perspective(45.f, 1280.f / 720.f, zNear, zFar);
+
+    GLScreenTriangle screenTriangle;
+
+    GLScreenFramebuffer screenFramebuffer;
+    std::vector<float4> green(1280 * 720, float4(0, 1, 0, 1));
+    screenFramebuffer.init(1280, 720, green.data());
+
+    GLScene glScene = loadAssimpGLScene("G:/MLV/Developpement/bonez3-scenes/assets/crytek-sponza/sponza.obj");
+
+    //GLScene glScene;
+    auto matOffset = glScene.getMaterialCount();
+    glScene.addMaterial(float3(1, 1, 1), float3(0), 0.f, nullptr, nullptr, nullptr);
+
+    GLScene::Triangle indices[] = { uint3(0, 1, 2) };
+    glScene.addTriangleMesh(triangle, 3, indices, 1, matOffset);
+
+    LOG(INFO) << "Mesh count = " << glScene.getTriangleMeshCount() << std::endl;
 
     auto done = false;
 
@@ -427,62 +494,126 @@ int main(int argc, char* argv[]) {
     ImVector<Node> nodes;
     ImVector<NodeLink> links;
 
-    while (!done) {
-        while (WindowManager::Event e = windowManager.pollEvent()) {
-            switch (e) {
-            default:
-                continue;
-            case WindowManager::EVENT_WINDOW_CLOSE:
-                if (windowManager.getClosedWindow() == window1) {
-                    done = true;
-                }
-            }
-        }
+    int2 mousePrevPosition;
 
+    auto closedListener = windowManager.onWindowClosed([&](auto windowID) {
+        if (windowID == window1) {
+            done = true;
+        }
+    });
+
+    auto mousePressedListener = windowManager.onMouseButtonPressed([&](auto buttonID) {
+        mousePrevPosition = windowManager.getMousePosition();
+        std::cerr << "pressed" << std::endl;
+    });
+
+    while (!done) {
+        windowManager.handleEvents();
+        //while (WindowManager::Event e = windowManager.pollEvent()) {
+        //    switch (e) {
+        //    default:
+        //        continue;
+        //    case WindowManager::EVENT_WINDOW_CLOSE:
+        //        if (windowManager.getClosedWindow() == window1) {
+        //            done = true;
+        //        }
+        //    }
+        //}
+
+        //// WINDOW 1: GRAPH
         windowManager.setCurrentWindow(window1);
 
-        //ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiSetCond_FirstUseEver);
-        //ImGui::Begin("Another Window", &show_window1);
-        //ImGui::Text("Hello");
-        //ImGui::End();
-
-        //ImGui::ShowTestWindow();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glViewport(0, 0, 1280, 720);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ShowExampleAppCustomNodeGraph(nodes, links);
 
         glUseProgram(gProgramID);
 
-        glViewport(0, 0, 1280, 720);
-
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
 
         ImGui::Render();
 
         windowManager.swapCurrentWindow();
 
+        //// WINDOW 2: SCENE
+        windowManager.setCurrentWindow(window2);
 
-        //windowManager.setCurrentWindow(window2);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        //ImGui::ShowTestWindow();
+        ImGui::ShowTestWindow();
 
-        //glClear(GL_COLOR_BUFFER_BIT);
+        ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiSetCond_FirstUseEver);
+        ImGui::Begin("Another Window", &show_window1);
+        ImGui::Text("Hello");
+        ImGui::End();
 
-        //glUseProgram(gProgramID);
+        gbufferRenderPass.render(projMatrix, viewController.getViewMatrix(), zFar, glScene, gBuffer);
 
-        //glViewport(0, 0, 512, 512);
+        glDisable(GL_DEPTH_TEST);
 
-        //glDrawArrays(GL_TRIANGLES, 0, 6);
+        screenFramebuffer.bindForDrawing();
+        glViewport(0, 0, 1280, 720);
 
-        //ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiSetCond_FirstUseEver);
-        //ImGui::Begin("Another Window", &show_window1);
-        //ImGui::Text("Hello");
-        //ImGui::End();
+        flatShadingPass.render(gBuffer, inverse(projMatrix), viewController.getViewMatrix(), screenTriangle);
 
-        //ImGui::Render();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        //windowManager.swapCurrentWindow();
+        screenFramebuffer.blitOnDefaultFramebuffer(uint4(0, 0, 1280, 720));
+
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+        glViewport(0, 0, 1280, 720);
+
+        ImGui::Render();
+
+        windowManager.swapCurrentWindow();
+
+        auto fSpeed = 3.f;
+        real3 localTranslationVector(0);
+        real3 localRotationVector(0);
+
+        // Update view controller
+        if (windowManager.getFocusedWindow() == window2) {
+            if (!windowManager.guiHasKeyboardFocus()) {
+                if (windowManager.isKeyPressed("z")) {
+                    localTranslationVector.z -= fSpeed;
+                }
+                if (windowManager.isKeyPressed("s")) {
+                    localTranslationVector.z += fSpeed;
+                }
+                if (windowManager.isKeyPressed("d")) {
+                    localTranslationVector.x += fSpeed;
+                }
+                if (windowManager.isKeyPressed("q")) {
+                    localTranslationVector.x -= fSpeed;
+                }
+                if (windowManager.isKeyPressed("a")) {
+                    localRotationVector.z += 0.01;
+                }
+                if (windowManager.isKeyPressed("e")) {
+                    localRotationVector.z -= 0.01;
+                }
+            }
+
+            if (!windowManager.guiHasMouseFocus()) {
+                if (windowManager.isMouseButtonPressed(WindowManager::MOUSE_BUTTON_LEFT)) {
+                    auto mousePosition = windowManager.getMousePosition();
+                    auto windowSize = windowManager.getWindowSize(window2);
+                    
+                    auto mouseOffset = mousePrevPosition - mousePosition;
+                    localRotationVector.x += 0.01 * mouseOffset.x;
+                    localRotationVector.y += 0.01 * mouseOffset.y;
+
+                    mousePrevPosition = mousePosition;
+                }
+            }
+        }
+        viewController.moveLocal(localTranslationVector, localRotationVector);
     }
         
 
