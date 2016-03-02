@@ -476,7 +476,7 @@ int main(int argc, char* argv[]) {
     std::vector<float4> green(1280 * 720, float4(0, 1, 0, 1));
     screenFramebuffer.init(1280, 720, green.data());
 
-    GLScene glScene = loadAssimpGLScene("G:/MLV/Developpement/bonez3-scenes/assets/crytek-sponza/sponza.obj");
+    GLScene glScene = loadAssimpGLScene("C:/Users/lnoel/Downloads/crytek-sponza/crytek-sponza/sponza.obj");
 
     //GLScene glScene;
     auto matOffset = glScene.getMaterialCount();
