@@ -139,10 +139,10 @@ bool isRegularFile(const FilePath& path);
 void createDirectory(const FilePath& path);
 
 // Iterate over the files contained in the directory pointed by directoryPath, calling functor for each one
-// The path given to functor is relative to directoryPath if relativePath = true. Otherwise, the path given to functor is directoryPath + path of file
+// The path given to functor is relative to directoryPath if extractRelativePath = true. Otherwise, the path given to functor is directoryPath + path of file
 // If functor returns false, the function returns
-void foreachFile(const FilePath& directoryPath, const std::function<void(const FilePath&)>& functor, bool relativePath = true);
+void foreachFile(const FilePath& directoryPath, const std::function<void(const FilePath&)>& functor, bool extractRelativePath = true);
 
-std::vector<FilePath> getContainedFiles(const FilePath& directoryPath, bool relativePath = true);
+std::vector<FilePath> getContainedFiles(const FilePath& directoryPath, bool extractRelativePath = true);
 
 }

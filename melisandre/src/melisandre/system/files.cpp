@@ -127,7 +127,7 @@ void createDirectory(const FilePath& path) {
     CreateDirectory(path.c_str(), 0);
 }
 
-void foreachFile(const FilePath& directoryPath, const std::function<void(const FilePath&)>& functor, bool relativePath) {
+void foreachFile(const FilePath& directoryPath, const std::function<void(const FilePath&)>& functor, bool extractRelativePath) {
     HANDLE handle{ CreateFile(directoryPath.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0) };
 
     if (handle == INVALID_HANDLE_VALUE) {
@@ -148,7 +148,7 @@ void foreachFile(const FilePath& directoryPath, const std::function<void(const F
     do {
         FilePath file(ffd.cFileName);
         if (file != ".." && file != ".") {
-            functor(relativePath ? file : directoryPath + file);
+            functor(extractRelativePath ? file : directoryPath + file);
         }
     } while (FindNextFile(hFind, &ffd) != 0);
     
@@ -157,11 +157,11 @@ void foreachFile(const FilePath& directoryPath, const std::function<void(const F
     CloseHandle(handle);
 }
 
-std::vector<FilePath> getContainedFiles(const FilePath& directoryPath, bool relativePath) {
+std::vector<FilePath> getContainedFiles(const FilePath& directoryPath, bool extractRelativePath) {
     std::vector<FilePath> files;
     foreachFile(directoryPath, [&](const FilePath& path) {
         files.emplace_back(path);
-    }, relativePath);
+    }, extractRelativePath);
     return files;
 }
 
