@@ -1,4 +1,5 @@
 #include <melisandre/viewer/WindowManager.hpp>
+#include <melisandre/system/logging.hpp>
 
 #include <SDL/SDL.h>
 
@@ -59,25 +60,39 @@ namespace mls
         SDL_Window* m_pCurrentSDLWindow = nullptr;
 
         SDL_Event m_LastPolledEvent;
-        WindowManager::WindowID m_nLastEventWindow = std::numeric_limits<WindowManager::WindowID>::max();
 
-        void updateLastEventWindow() {
-            for (auto i = size_t(0); i < m_SDLWindows.size(); ++i) {
-                const auto& window = m_SDLWindows[i];
-                if (window.m_nWindowID == m_LastPolledEvent.window.windowID) {
-                    m_nLastEventWindow = i;
-                    break;
+        WindowManager::WindowID m_FocusedWindow = 0;
+
+        bool pollEvent(WindowManager::WindowID& targetedWindow) {
+            while (SDL_PollEvent(&m_LastPolledEvent)) {
+                if (m_LastPolledEvent.type == SDL_WINDOWEVENT) {
+                    for (auto i = size_t(0); i < m_SDLWindows.size(); ++i) {
+                        const auto& window = m_SDLWindows[i];
+                        if (window.m_nWindowID == m_LastPolledEvent.window.windowID) {
+                            targetedWindow = i;
+                            break;
+                        }
+                    }
+
+                    if (m_LastPolledEvent.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+                        m_FocusedWindow = targetedWindow;
+                    }
                 }
+
+                auto guiState = m_SDLWindows[m_FocusedWindow].getGUIState();
+                ImGui_ImplSdl_ProcessEvent(guiState, &m_LastPolledEvent);
+                if (guiState->IO.WantCaptureMouse || guiState->IO.WantCaptureKeyboard) {
+                    continue;
+                }
+
+                return true;
             }
+            return false;
         }
 
         SDL_Window* getSDLWindow(WindowManager::WindowID id) {
             assert(id < m_SDLWindows.size());
             return m_SDLWindows[id].m_pWindow.get();
-        }
-
-        ImGuiState* getLastSDLWindowEventGUIState() {
-            return m_SDLWindows[m_nLastEventWindow].getGUIState();
         }
     };
 
@@ -139,34 +154,137 @@ namespace mls
         SDL_GL_SwapWindow(m_pImpl->m_pCurrentSDLWindow);
 	}
 
-    WindowManager::Event WindowManager::pollEvent()
-    {
-        if (!SDL_PollEvent(&m_pImpl->m_LastPolledEvent)) {
-            return EVENT_NONE;
-        }
-
-        if (m_pImpl->m_LastPolledEvent.type == SDL_WINDOWEVENT) {
-            m_pImpl->updateLastEventWindow();
-            switch (m_pImpl->m_LastPolledEvent.window.event)
-            {
-            default:
-                return EVENT_NONE;
-            case SDL_WINDOWEVENT_CLOSE:
-                return EVENT_WINDOW_CLOSE;
-            }
-        }
-
-        if (ImGui_ImplSdl_ProcessEvent(m_pImpl->getLastSDLWindowEventGUIState(), &m_pImpl->m_LastPolledEvent)) {
-            return EVENT_NONE;
-        }
-
-        return EVENT_NONE;
+    WindowManager::WindowID WindowManager::getFocusedWindow() const {
+        return m_pImpl->m_FocusedWindow;
     }
 
-    WindowManager::WindowID WindowManager::getClosedWindow() const
+    bool WindowManager::guiHasKeyboardFocus() const {
+        auto state = m_pImpl->m_SDLWindows[m_pImpl->m_FocusedWindow].getGUIState();
+        return state->IO.WantCaptureKeyboard;
+    }
+
+    bool WindowManager::guiHasMouseFocus() const {
+        auto state = m_pImpl->m_SDLWindows[m_pImpl->m_FocusedWindow].getGUIState();
+        return state->IO.WantCaptureMouse;
+    }
+
+    bool WindowManager::guiHasFocus() const {
+        return guiHasKeyboardFocus() || guiHasMouseFocus();
+    }
+
+    void WindowManager::handleEvents()
     {
-        assert(m_pImpl->m_LastPolledEvent.type == SDL_WINDOWEVENT 
-            && m_pImpl->m_LastPolledEvent.window.event == SDL_WINDOWEVENT_CLOSE);
-        return m_pImpl->m_nLastEventWindow;
+        WindowID targetedWindow;
+        while (m_pImpl->pollEvent(targetedWindow)) {
+            auto* event = &m_pImpl->m_LastPolledEvent;
+            
+            if (event->type == SDL_WINDOWEVENT) {
+                switch (event->window.event) {
+                    default:
+                        SDL_Log("Window %d got unknown event %d",
+                            event->window.windowID, event->window.event);
+                        break;
+                    case SDL_WINDOWEVENT_CLOSE:
+                        SDL_Log("Window %d closed", event->window.windowID);
+                        m_WindowClosedEventDispatcher.dispatch(targetedWindow);
+                        break;
+                    case SDL_WINDOWEVENT_SHOWN:
+                        SDL_Log("Window %d shown", event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_HIDDEN:
+                        SDL_Log("Window %d hidden", event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_EXPOSED:
+                        SDL_Log("Window %d exposed", event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_MOVED:
+                        SDL_Log("Window %d moved to %d,%d",
+                            event->window.windowID, event->window.data1,
+                            event->window.data2);
+                        break;
+                    case SDL_WINDOWEVENT_RESIZED:
+                        SDL_Log("Window %d resized to %dx%d",
+                            event->window.windowID, event->window.data1,
+                            event->window.data2);
+                        break;
+                    case SDL_WINDOWEVENT_SIZE_CHANGED:
+                        SDL_Log("Window %d size changed to %dx%d",
+                            event->window.windowID, event->window.data1,
+                            event->window.data2);
+                        break;
+                    case SDL_WINDOWEVENT_MINIMIZED:
+                        SDL_Log("Window %d minimized", event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_MAXIMIZED:
+                        SDL_Log("Window %d maximized", event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_RESTORED:
+                        SDL_Log("Window %d restored", event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_ENTER:
+                        SDL_Log("Mouse entered window %d",
+                            event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_LEAVE:
+                        SDL_Log("Mouse left window %d", event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_FOCUS_GAINED:
+                        SDL_Log("Window %d gained keyboard focus",
+                            event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_FOCUS_LOST:
+                        SDL_Log("Window %d lost keyboard focus",
+                            event->window.windowID);
+                        break;
+                }
+            }
+            else {
+                switch (event->type) {
+                    default:
+                        break;
+                    case SDL_MOUSEBUTTONDOWN:
+                    {
+                        static int mapping[] = {
+                            0,
+                            MOUSE_BUTTON_LEFT,
+                            MOUSE_BUTTON_MIDDLE,
+                            MOUSE_BUTTON_RIGHT
+                        };
+                        m_MouseButtonPressedEventDispatcher.dispatch(mapping[event->button.button]);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    bool WindowManager::isKeyPressed(const char* name) const {
+        auto keyCode = SDL_GetKeyFromName(name);
+        auto scanCode = SDL_GetScancodeFromKey(keyCode);
+        auto state = SDL_GetKeyboardState(nullptr);
+        assert(scanCode < SDL_NUM_SCANCODES);
+        return state[scanCode];
+    }
+
+    bool WindowManager::isMouseButtonPressed(MouseButton button) const {
+        static int mapping[] = {
+            SDL_BUTTON_LEFT,
+            SDL_BUTTON_MIDDLE,
+            SDL_BUTTON_RIGHT
+        };
+
+        return SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON(mapping[button]);
+    }
+
+    int2 WindowManager::getMousePosition() const {
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        return int2(x, y);
+    }
+
+    size2 WindowManager::getWindowSize(WindowID windowID) const {
+        int w, h;
+        SDL_GetWindowSize(m_pImpl->getSDLWindow(windowID), &w, &h);
+        return size2(w, h);
     }
 }
