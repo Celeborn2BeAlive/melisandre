@@ -102,6 +102,10 @@ public:
         return Vec2u(getWidth(), getHeight());
     }
 
+    float getRatio() const {
+        return float(getWidth()) / getHeight();
+    }
+
 protected:
     void init(size_t width, size_t height, const GLenum internalFormats[NbColorBuffers], GLenum filter) {
         m_nWidth = width;
