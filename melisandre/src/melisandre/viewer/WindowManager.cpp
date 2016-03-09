@@ -112,14 +112,19 @@ namespace mls
         // inside this .cpp
     }
 	
-    WindowManager::WindowID WindowManager::createWindow(const char* title, size_t width, size_t height)
+    WindowManager::WindowID WindowManager::createWindow(const char* title, size_t width, size_t height, uint64_t windowFlagBits)
 	{
-        return createWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height);
+        return createWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, windowFlagBits);
 	}
 	
-    WindowManager::WindowID WindowManager::createWindow(const char* title, int x, int y, size_t width, size_t height)
+    WindowManager::WindowID WindowManager::createWindow(const char* title, int x, int y, size_t width, size_t height, uint64_t windowFlagBits)
 	{
-        auto pWindow = SDL_CreateWindow(title, x, y, int(width), int(height), SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+        auto flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
+        if (windowFlagBits & WINDOW_RESIZABLE) {
+            flags = flags | SDL_WINDOW_RESIZABLE;
+        }
+
+        auto pWindow = SDL_CreateWindow(title, x, y, int(width), int(height), flags);
         if (pWindow == nullptr) {
             throw std::runtime_error("SDL_CreateWindow failed: " + std::string(SDL_GetError()));
         }

@@ -12,6 +12,11 @@ namespace mls {
     
     class WindowManager {
     public:
+        enum WindowFlag {
+            WINDOW_RESIZABLE = 1 << 0,
+            WINDOW_FLAG_COUNT
+        };
+
         enum MouseButton {
             MOUSE_BUTTON_LEFT = 0,
             MOUSE_BUTTON_MIDDLE = 1,
@@ -25,9 +30,9 @@ namespace mls {
 
         ~WindowManager();
 
-        WindowID createWindow(const char* title, size_t width, size_t height);
+        WindowID createWindow(const char* title, size_t width, size_t height, uint64_t windowFlagBits = 0);
 
-        WindowID createWindow(const char* title, int x, int y, size_t width, size_t height);
+        WindowID createWindow(const char* title, int x, int y, size_t width, size_t height, uint64_t windowFlagBits = 0);
 
         void setCurrentWindow(WindowID windowID);
 
