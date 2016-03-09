@@ -115,6 +115,7 @@ struct Node
     ImVec2 GetInputSlotPos(int slot_no) const { return ImVec2(Pos.x, Pos.y + Size.y * ((float)slot_no + 1) / ((float)InputsCount + 1)); }
     ImVec2 GetOutputSlotPos(int slot_no) const { return ImVec2(Pos.x + Size.x, Pos.y + Size.y * ((float)slot_no + 1) / ((float)OutputsCount + 1)); }
 };
+
 struct NodeLink
 {
     int     InputIdx, InputSlot, OutputIdx, OutputSlot;
@@ -124,10 +125,11 @@ struct NodeLink
 
 // Really dumb data structure provided for the example.
 // Note that we storing links are INDICES (not ID) to make example code shorter, obviously a bad idea for any general purpose code.
-static void ShowExampleAppCustomNodeGraph(ImVector<Node>& nodes, ImVector<NodeLink>& links, bool* opened = nullptr)
+static void ShowExampleAppCustomNodeGraph(ImVector<Node>& nodes, ImVector<NodeLink>& links, size_t width, size_t height, bool* opened = nullptr)
 {
-    ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiSetCond_FirstUseEver);
-    if (!ImGui::Begin("Example: Custom Node Graph", opened))
+    ImGui::SetNextWindowSize(ImVec2(width, height));
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    if (!ImGui::Begin("Example: Custom Node Graph", opened, ImVec2(width, height), -1.f, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove))
     {
         ImGui::End();
         return;
@@ -179,6 +181,7 @@ static void ShowExampleAppCustomNodeGraph(ImVector<Node>& nodes, ImVector<NodeLi
     ImGui::Text("Hold middle mouse button to scroll (%.2f,%.2f)", scrolling.x, scrolling.y);
     ImGui::SameLine(ImGui::GetWindowWidth() - 100);
     ImGui::Checkbox("Show grid", &show_grid);
+    ImGui::Text("win_pos (%.2f,%.2f)", ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, ImColor(60, 60, 70, 200));
@@ -327,18 +330,17 @@ using namespace mls;
 
 #include <melisandre/utils/EventDispatcher.hpp>
 
-int main(int argc, char* argv[]) {
-    size_t x = 1500;
-    EventDispatcher<void(std::string)> test1;
-    auto listener = test1.addListener([&](std::string str) {
-        std::cerr << "Dat string : " << str << std::endl;
-    });
+static const size_t FB_WIDTH = 1920;
+static const size_t FB_HEIGHT = 1080;
 
-    test1.dispatch("lol1");
-    test1.dispatch("lol2");
+int main(int argc, char* argv[])
+{
+    if (argc < 2) {
+        std::cerr << "LAWL, set argv[0] to the path of a 3D model bawlosse" << std::endl;
+        return EXIT_FAILURE;
+    }
 
-    mls::helloWorld();
-
+    std::cerr << "ImGui::GetVersion() = " << ImGui::GetVersion() << std::endl;
     mls::initLogging(argc, argv);
 
     //Initialization flag
@@ -346,13 +348,11 @@ int main(int argc, char* argv[]) {
 
     WindowManager windowManager{ 4, 5 };
 
-    auto window1 = windowManager.createWindow("\"The night is dark and full of terrors...but the fire burns them all away.\" - Melisandre", 1280, 720);
-    auto window2 = windowManager.createWindow("SDL Tutorial2", 1280, 720);
+    auto window2 = windowManager.createWindow("SDL Tutorial2", 1280, 720, WindowManager::WINDOW_RESIZABLE);
+    auto window1 = windowManager.createWindow("\"The night is dark and full of terrors...but the fire burns them all away.\" - Melisandre", 1280, 720, WindowManager::WINDOW_RESIZABLE);
+    
 
     mls::initOpenGL();
-
-
-
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -464,19 +464,18 @@ int main(int argc, char* argv[]) {
     GLFlatShadingPass flatShadingPass{ shaderManager };
 
     GLGBuffer gBuffer;
-    gBuffer.init(1280, 720);
+    gBuffer.init(FB_WIDTH, FB_HEIGHT);
 
     auto zFar = 3000.f;
     auto zNear = zFar / 1000.f;
-    auto projMatrix = perspective(45.f, 1280.f / 720.f, zNear, zFar);
 
     GLScreenTriangle screenTriangle;
 
     GLScreenFramebuffer screenFramebuffer;
-    std::vector<float4> green(1280 * 720, float4(0, 1, 0, 1));
-    screenFramebuffer.init(1280, 720, green.data());
+    //std::vector<float4> green(1280 * 720, float4(0, 1, 0, 1));
+    screenFramebuffer.init(FB_WIDTH, FB_HEIGHT);
 
-    GLScene glScene = loadAssimpGLScene("C:/Users/lnoel/Downloads/crytek-sponza/crytek-sponza/sponza.obj");
+    GLScene glScene = loadAssimpGLScene(argv[1]);
 
     //GLScene glScene;
     auto matOffset = glScene.getMaterialCount();
@@ -497,9 +496,7 @@ int main(int argc, char* argv[]) {
     int2 mousePrevPosition;
 
     auto closedListener = windowManager.onWindowClosed([&](auto windowID) {
-        if (windowID == window1) {
-            done = true;
-        }
+        done = true;
     });
 
     auto mousePressedListener = windowManager.onMouseButtonPressed([&](auto buttonID) {
@@ -509,25 +506,16 @@ int main(int argc, char* argv[]) {
 
     while (!done) {
         windowManager.handleEvents();
-        //while (WindowManager::Event e = windowManager.pollEvent()) {
-        //    switch (e) {
-        //    default:
-        //        continue;
-        //    case WindowManager::EVENT_WINDOW_CLOSE:
-        //        if (windowManager.getClosedWindow() == window1) {
-        //            done = true;
-        //        }
-        //    }
-        //}
 
         //// WINDOW 1: GRAPH
         windowManager.setCurrentWindow(window1);
+        auto win1Size = windowManager.getWindowSize(window1);
 
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        glViewport(0, 0, 1280, 720);
+        glViewport(0, 0, win1Size.x, win1Size.y);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        ShowExampleAppCustomNodeGraph(nodes, links);
+        ShowExampleAppCustomNodeGraph(nodes, links, win1Size.x, win1Size.y);
 
         glUseProgram(gProgramID);
 
@@ -538,8 +526,21 @@ int main(int argc, char* argv[]) {
 
         windowManager.swapCurrentWindow();
 
+
+        // DRAW ON SCREEN FB
+        auto projMatrix = perspective(45.f, gBuffer.getRatio(), zNear, zFar);
+        gbufferRenderPass.render(projMatrix, viewController.getViewMatrix(), zFar, glScene, gBuffer);
+
+        glDisable(GL_DEPTH_TEST);
+
+        screenFramebuffer.bindForDrawing();
+        glViewport(0, 0, screenFramebuffer.getSize().x, screenFramebuffer.getSize().y);
+
+        flatShadingPass.render(gBuffer, inverse(projMatrix), viewController.getViewMatrix(), screenTriangle);
+
         //// WINDOW 2: SCENE
         windowManager.setCurrentWindow(window2);
+        auto renderWinSize = windowManager.getWindowSize(window2);
 
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -551,23 +552,9 @@ int main(int argc, char* argv[]) {
         ImGui::Text("Hello");
         ImGui::End();
 
-        gbufferRenderPass.render(projMatrix, viewController.getViewMatrix(), zFar, glScene, gBuffer);
+        screenFramebuffer.blitOnDefaultFramebuffer(uint4(0, 0, renderWinSize.x, renderWinSize.y), GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
-        glDisable(GL_DEPTH_TEST);
-
-        screenFramebuffer.bindForDrawing();
-        glViewport(0, 0, 1280, 720);
-
-        flatShadingPass.render(gBuffer, inverse(projMatrix), viewController.getViewMatrix(), screenTriangle);
-
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        screenFramebuffer.blitOnDefaultFramebuffer(uint4(0, 0, 1280, 720));
-
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
-        glViewport(0, 0, 1280, 720);
+        glViewport(0, 0, renderWinSize.x, renderWinSize.y);
 
         ImGui::Render();
 
