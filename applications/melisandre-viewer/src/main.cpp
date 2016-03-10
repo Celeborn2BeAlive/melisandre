@@ -507,6 +507,9 @@ int main(int argc, char* argv[]) {
         std::cerr << "pressed" << std::endl;
     });
 
+
+    int currentItem = 0;
+
     while (!done) {
         windowManager.handleEvents();
         //while (WindowManager::Event e = windowManager.pollEvent()) {
@@ -549,6 +552,16 @@ int main(int argc, char* argv[]) {
         ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiSetCond_FirstUseEver);
         ImGui::Begin("Another Window", &show_window1);
         ImGui::Text("Hello");
+        ImGui::PlotLines("Sin", [](void* pData, int nIdx) { return mls::sin(nIdx * 0.2f);  }, nullptr, 100);
+
+        static const char* labels[] = {
+            "label1", "label20", "label43", "label78"
+        };
+
+        ImGui::Combo("Choice", &currentItem, [](void* pLabels, int nIdx, const char** pOutText) {
+            *pOutText = ((const char**)pLabels)[nIdx];
+            return true;
+        }, labels, std::size(labels));
         ImGui::End();
 
         gbufferRenderPass.render(projMatrix, viewController.getViewMatrix(), zFar, glScene, gBuffer);
