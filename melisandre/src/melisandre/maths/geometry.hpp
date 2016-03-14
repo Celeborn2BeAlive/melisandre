@@ -22,18 +22,18 @@ using glm::inverse;
 using glm::determinant;
 
 template<typename T, typename U>
-inline auto distanceSquared(const T& lhs, const U& rhs) {
+inline auto sqr_distance(const T& lhs, const U& rhs) {
     auto v = rhs - lhs;
     return dot(v, v);
 }
 
 template<typename T>
-inline auto lengthSquared(const T& v) {
+inline auto sqr_length(const T& v) {
     return dot(v, v);
 }
 
 template<typename T, typename U>
-inline auto absDot(const T& lhs, const U& rhs) {
+inline auto abs_dot(const T& lhs, const U& rhs) {
     return abs(dot(lhs, rhs));
 }
 

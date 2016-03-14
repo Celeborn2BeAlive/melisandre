@@ -2,15 +2,17 @@
 #include "types.hpp"
 #include "geometry.hpp"
 #include "constants.hpp"
-#include "bbox.hpp"
+#include "aabb.hpp"
 #include "colors.hpp"
-#include "common.hpp"
 
 using namespace mls;
 
 // Compilation tests
 static void maths_foo() {
-    distanceSquared(real3{}, real3{});
-    lengthSquared(real3{});
-    absDot(real3{}, real3{});
+    sqr_distance(real3{}, real3{});
+    sqr_length(real3{});
+    abs_dot(real3{}, real3{});
+
+    aabb<real3> box3d;
+    aabb<real2> box2d;
 }

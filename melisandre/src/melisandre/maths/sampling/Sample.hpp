@@ -1,51 +1,59 @@
 #pragma once
 
 #include <ostream>
+
 #include <melisandre/maths/types.hpp>
+#include <melisandre/maths/numeric.hpp>
+#include <melisandre/maths/constants.hpp>
 
 #include "measures.hpp"
 
 namespace mls {
 
-template<typename T, typename Measure = UnknownMeasure, typename RealType = real>
-struct Sample {
-    Sample() = default;
+template<typename ValueType, typename MeasureType = unknown_measure, typename RealType = real>
+class sample {
+public:
+    using value_type = ValueType;
+    using measure_type = MeasureType;
+    using real_type = RealType;
 
-    template<typename U, typename Real>
-    explicit Sample(U&& value, Real&& density): 
-        m_Value(std::forward<U>(value)),
-        m_Density(std::forward<Real>(density)) {
+    sample() = default;
+
+    template<typename ValueType, typename RealType>
+    explicit sample(ValueType&& value, RealType&& density):
+        m_Value(std::forward<ValueType>(value)),
+        m_RcpDensity(rcp(density)) {
     }
 
     explicit operator bool() const {
-        return density > RealType{ 0 };
+        return m_RcpDensity > zero<real_type>();
     }
 
-    const T& value() const {
+    const value_type& value() const {
         return m_Value;
     }
 
-    RealType density() const {
-        return m_Density;
+    real_type density() const {
+        return m_RcpDensity ? rcp(m_RcpDensity) : zero<real_type>();
     }
 
-    RealType rcpDensity() const {
-        return m_Density ? 1.f / m_Density : 0;
+    real_type rcp_density() const {
+        return m_RcpDensity;
     }
 
 private:
-    T m_Value;
-    RealType m_Density = RealType{ 0 };
+    value_type m_Value;
+    real_type m_RcpDensity = zero<real_type>();
 };
 
-using DirectionSample = Sample<real3, SolidAngleMeasure>;
-using PlaneSample = Sample<real2, PlaneMeasure>;
-using LineSample = Sample<real, LineMeasure>;
-using Discrete1DSample = Sample<size_t, DiscreteMeasure>;
-using Discrete2DSample = Sample<size2, DiscreteMeasure>;
+using direction_sample = sample<real3, solid_angle_measure>;
+using plane_sample = sample<real2, plane_measure>;
+using line_sample = sample<real, line_measure>;
+using discrete_1d_sample = sample<size_t, discrete_measure>;
+using discrete_2d_sample = sample<size2, discrete_measure>;
 
 template<typename T, typename Measure, typename RealType>
-inline std::ostream& operator <<(std::ostream& out, const Sample<T, Measure, RealType>& s) {
+inline std::ostream& operator <<(std::ostream& out, const sample<T, Measure, RealType>& s) {
     out << "[ " << s.value() << ", pdf = " << s.density() << " ] ";
     return out;
 }

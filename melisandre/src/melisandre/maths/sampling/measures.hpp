@@ -2,36 +2,36 @@
 
 namespace mls {
 
-    struct UnknownMeasure {
+    struct unknown_measure {
     };
 
-    struct SolidAngleMeasure {
+    struct solid_angle_measure {
     };
 
-    struct ProjectedSolidAngleMeasure {
+    struct proj_solid_angle_measure {
     };
 
-    struct SurfaceAreaMeasure {
+    struct surface_area_measure {
     };
 
-    struct VolumetricMeasure {
+    struct volumetric_measure {
     };
 
-    struct LineMeasure {
+    struct line_measure {
     };
 
-    struct PlaneMeasure {
+    struct plane_measure {
     };
 
-    struct SurfaceAreaPathMeasure {
+    struct surface_area_path_measure {
     };
 
-    struct RayMeasure {
+    struct ray_measure {
     };
 
-    struct DiscreteMeasure {
+    struct discrete_measure {
     };
 
-    struct DiscreteFiniteMeasure {
+    struct discrete_finite_measure {
     };
 }

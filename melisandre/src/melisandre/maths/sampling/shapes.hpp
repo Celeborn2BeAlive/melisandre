@@ -1,7 +1,7 @@
 #pragma once
 
 #include <melisandre/maths/maths.hpp>
-#include "Sample.hpp"
+#include "sample.hpp"
 
 namespace mls {
 
@@ -18,10 +18,10 @@ inline real3 directionFromPhiCosThetaSinTheta(real phi, real cosTheta, real sinT
 }
 
 /*! Uniform sphere sampling. */
-inline DirectionSample uniformSampleSphere(real u, real v) {
+inline direction_sample uniformSampleSphere(real u, real v) {
     const auto phi = two_pi<real>() * u;
     const auto cosTheta = 1 - 2 * v, sinTheta = cos2sin(cosTheta);
-    return DirectionSample { directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), one_over_four_pi<real>() };
+    return direction_sample { directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), one_over_four_pi<real>() };
 }
 
 /*! Computes the probability density for the uniform sphere sampling. */
@@ -42,12 +42,12 @@ inline real2 rcpUniformSampleSphere(const real3& direction) {
 }
 
 /*! Cosine weighted sphere sampling. Up direction is the z direction. */
-inline DirectionSample cosineSampleSphere(real u, real v) {
+inline direction_sample cosineSampleSphere(real u, real v) {
     const real phi = two_pi<real>() * u;
     const real vv = 2.0f * (v - 0.5f);
     const real cosTheta = sign(vv) * sqrt(abs(vv));
     const real sinTheta = cos2sin(cosTheta);
-    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), 2.0f * cosTheta * one_over_pi<real>());
+    return direction_sample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), 2.0f * cosTheta * one_over_pi<real>());
 }
 
 /*! Computes the probability density for the cosine weighted sphere sampling. */
@@ -56,9 +56,9 @@ inline real cosineSampleSpherePDF(const real3& s) {
 }
 
 /*! Cosine weighted sphere sampling. Up direction is provided as argument. */
-inline DirectionSample cosineSampleSphere(real u, real v, const real3& N) {
-    DirectionSample s = cosineSampleSphere(u, v);
-    return DirectionSample(frameZ(N) * s.value(), s.density());
+inline direction_sample cosineSampleSphere(real u, real v, const real3& N) {
+    direction_sample s = cosineSampleSphere(u, v);
+    return direction_sample(frameZ(N) * s.value(), s.density());
 }
 
 /*! Computes the probability density for the cosine weighted sphere sampling. */
@@ -71,10 +71,10 @@ inline real cosineSampleSpherePDF(const real3& s, const real3& N) {
 ////////////////////////////////////////////////////////////////////////////////
 
 /*! Uniform hemisphere sampling. Up direction is the z direction. */
-inline DirectionSample uniformSampleHemisphere(real u, real v) {
+inline direction_sample uniformSampleHemisphere(real u, real v) {
     const real phi = two_pi<real>() * u;
     const real cosTheta = v, sinTheta = cos2sin(v);
-    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), one_over_two_pi<real>());
+    return direction_sample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), one_over_two_pi<real>());
 }
 
 /*! Computes the probability density for the uniform hemisphere sampling. */
@@ -83,9 +83,9 @@ inline real uniformSampleHemispherePDF(const real3& s) {
 }
 
 /*! Uniform hemisphere sampling. Up direction is provided as argument. */
-inline DirectionSample uniformSampleHemisphere(real u, real v, const real3& N) {
-    DirectionSample s = uniformSampleHemisphere(u, v);
-    return DirectionSample(frameZ(N) * s.value(), s.density());
+inline direction_sample uniformSampleHemisphere(real u, real v, const real3& N) {
+    direction_sample s = uniformSampleHemisphere(u, v);
+    return direction_sample(frameZ(N) * s.value(), s.density());
 }
 
 /*! Computes the probability density for the uniform hemisphere sampling. */
@@ -95,10 +95,10 @@ inline real uniformSampleHemispherePDF(const real3& s, const real3& N) {
 
 /*! Cosine weighted hemisphere sampling. Up direction is the z direction. */
 // The pdf can be 0 if v = 0
-inline DirectionSample cosineSampleHemisphere(real u, real v) {
+inline direction_sample cosineSampleHemisphere(real u, real v) {
     const real phi = two_pi<real>() * u;
     const real cosTheta = sqrt(v), sinTheta = sqrt(1.0f - v);
-    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), cosTheta * one_over_pi<real>());
+    return direction_sample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta), cosTheta * one_over_pi<real>());
 }
 
 inline real2 rcpCosineSampleHemisphere(const real3& d) {
@@ -115,9 +115,9 @@ inline real cosineSampleHemispherePDF(const real3& s) {
 }
 
 /*! Cosine weighted hemisphere sampling. Up direction is provided as argument. */
-inline DirectionSample cosineSampleHemisphere(real u, real v, const real3& N) {
-    DirectionSample s = cosineSampleHemisphere(u, v);
-    return DirectionSample(frameZ(N) * real3(s.value()), s.density());
+inline direction_sample cosineSampleHemisphere(real u, real v, const real3& N) {
+    direction_sample s = cosineSampleHemisphere(u, v);
+    return direction_sample(frameZ(N) * real3(s.value()), s.density());
 }
 
 inline real2 rcpCosineSampleHemisphere(const real3& d, const real3& N) {
@@ -132,11 +132,11 @@ inline real cosineSampleHemispherePDF(const real3& s, const real3& N) {
 
 /*! Samples hemisphere with power cosine distribution. Up direction
  *  is the z direction. */
-inline DirectionSample powerCosineSampleHemisphere(real u, real v, real exp) {
+inline direction_sample powerCosineSampleHemisphere(real u, real v, real exp) {
     const real phi = two_pi<real>() * u;
     const real cosTheta = pow(v, 1.f / (exp + 1));
     const real sinTheta = cos2sin(cosTheta);
-    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta),
+    return direction_sample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta),
                     (exp + 1.0f) * pow(cosTheta, exp) * one_over_two_pi<real>());
 }
 
@@ -147,9 +147,9 @@ inline real powerCosineSampleHemispherePDF(const real3& s, real exp) {
 
 /*! Samples hemisphere with power cosine distribution. Up direction
  *  is provided as argument. */
-inline DirectionSample powerCosineSampleHemisphere(real u, real v, const real3& N, real exp) {
-    DirectionSample s = powerCosineSampleHemisphere(u,v,exp);
-    return DirectionSample(frameZ(N) * real3(s.value()), s.density());
+inline direction_sample powerCosineSampleHemisphere(real u, real v, const real3& N, real exp) {
+    direction_sample s = powerCosineSampleHemisphere(u,v,exp);
+    return direction_sample(frameZ(N) * real3(s.value()), s.density());
 }
 
 /*! Computes the probability density for the power cosine sampling of the hemisphere. */
@@ -164,11 +164,11 @@ inline real powerCosineSampleHemispherePDF(const real3& s, const real3& N, real 
 
 /*! Uniform sampling of spherical cone. Cone direction is the z
  *  direction. */
-inline DirectionSample uniformSampleCone(real u, real v, real angle) {
+inline direction_sample uniformSampleCone(real u, real v, real angle) {
     const real phi = two_pi<real>() * u;
     const real cosTheta = 1.0f - v * (1.0f - cos(angle));
     const real sinTheta = cos2sin(cosTheta);
-    return DirectionSample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta),
+    return direction_sample(directionFromPhiCosThetaSinTheta(phi, cosTheta, sinTheta),
                     1.f / (four_pi<real>() * sqr(sin(0.5f * angle))));
 }
 
@@ -178,9 +178,9 @@ inline real uniformSampleConePDF(const real3& s, real angle) {
 }
 
 /*! Uniform sampling of spherical cone. Cone direction is provided as argument. */
-inline DirectionSample uniformSampleCone(real u, real v, real angle, const real3& N) {
-    DirectionSample s = uniformSampleCone(u, v, angle);
-    return DirectionSample(frameZ(N) * s.value(), s.density());
+inline direction_sample uniformSampleCone(real u, real v, real angle, const real3& N) {
+    direction_sample s = uniformSampleCone(u, v, angle);
+    return direction_sample(frameZ(N) * s.value(), s.density());
 }
 
 /*! Computes the probability density of uniform spherical cone sampling. */
@@ -206,7 +206,7 @@ inline real2 uniformSampleTriangleUVs(real u, real v, const real3& A, const real
 // Uniform sample a spherical triangle.
 // A, B and C must be located on the unit sphere centered on (0, 0, 0)
 // Implements the algorithm described in "Stratified Sampling of Spherical Triangles" [Arvo95]
-DirectionSample uniformSampleSphericalTriangle(real e1, real e2,
+direction_sample uniformSampleSphericalTriangle(real e1, real e2,
                                         const real3& A, const real3& B, const real3& C);
 
 real sphericalTriangleArea(const real3& A, const real3& B, const real3& C);

@@ -18,7 +18,7 @@ real sphericalTriangleArea(const real3& A, const real3& B, const real3& C) {
     return alpha + beta + gamma - pi<real>();
 }
 
-DirectionSample uniformSampleSphericalTriangle(real e1, real e2, const real3& A, const real3& B, const real3& C) {
+direction_sample uniformSampleSphericalTriangle(real e1, real e2, const real3& A, const real3& B, const real3& C) {
     static auto normalizedOrthogonalComponent = [](const real3& x, const real3& y) {
         return normalize(x - dot(x, y) * y);
     };
@@ -46,7 +46,7 @@ DirectionSample uniformSampleSphericalTriangle(real e1, real e2, const real3& A,
     // Spherical triangle area
     auto area = alpha + beta + gamma - pi<real>();
     if(area == 0.f) {
-        return DirectionSample{ zero<real3>(), 0.f };
+        return direction_sample{ zero<real3>(), 0.f };
     }
 
     auto newArea = e1 * area; // Sample sub-triangle
@@ -66,7 +66,7 @@ DirectionSample uniformSampleSphericalTriangle(real e1, real e2, const real3& A,
 
     auto P = z * B + sqrt(1 - sqr(z)) * normalizedOrthogonalComponent(newC, B);
 
-    return DirectionSample{ P, 1.f / area };
+    return direction_sample{ P, 1.f / area };
 }
 
 }

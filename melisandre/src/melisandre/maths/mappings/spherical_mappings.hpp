@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../common.hpp"
-#include "../constants.hpp"
+#include <melisandre/maths/numeric.hpp>
+#include <melisandre/maths/constants.hpp>
+
 #include "image_mappings.hpp"
 
 namespace mls {

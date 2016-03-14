@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../common.hpp"
+#include <melisandre/maths/numeric.hpp>
 #include "image_mappings.hpp"
 
 namespace mls {

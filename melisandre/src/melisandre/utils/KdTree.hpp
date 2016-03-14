@@ -242,7 +242,7 @@ private:
                 }
             }
         }
-        float distSquared = distanceSquared(m_NodesData[nodeIndex].m_Position, point);
+        float distSquared = sqr_distance(m_NodesData[nodeIndex].m_Position, point);
         if(distSquared < maxDistanceSquared) {
             process(m_NodesData[nodeIndex].m_nIndex, m_NodesData[nodeIndex].m_Position, distSquared, maxDistanceSquared);
         }
@@ -269,7 +269,7 @@ private:
         auto node = m_Nodes[nodeIndex];
         uint32_t index = m_NodesData[nodeIndex].m_nIndex;
 
-        float candidateDistSquared = distanceSquared(point, m_NodesData[nodeIndex].m_Position);
+        float candidateDistSquared = sqr_distance(point, m_NodesData[nodeIndex].m_Position);
 
         // If the node is a leaf, end of the recursion
         if(node.m_nSplitAxis == 3) {
@@ -333,7 +333,7 @@ private:
         auto node = m_Nodes[nodeIndex];
         uint32_t index = m_NodesData[nodeIndex].m_nIndex;
 
-        float candidateDistSquared = distanceSquared(point, m_NodesData[nodeIndex].m_Position);
+        float candidateDistSquared = sqr_distance(point, m_NodesData[nodeIndex].m_Position);
 
         // If the node is a leaf, end of the recursion
         if(node.m_nSplitAxis == 3) {

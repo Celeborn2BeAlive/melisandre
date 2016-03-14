@@ -1,8 +1,19 @@
 #pragma once
 
 #include "glm.hpp"
+#include "constants.hpp"
 
 namespace mls {
+
+template<typename T>
+inline T rcp(const T& value) {
+    return one<T>() / value;
+}
+
+template<typename T>
+inline T sqr(const T& value) {
+    return value * value;
+}
 
 using glm::abs;
 

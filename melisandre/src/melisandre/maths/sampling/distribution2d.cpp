@@ -21,21 +21,21 @@
 
 namespace mls {
 
-PlaneSample sampleContinuousDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D) {
+plane_sample sampleContinuousDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D) {
     assert(height > 0);
     auto sy = sampleContinuousDistribution1D(pBuffer, height, s2D.y);
     auto idx = clamp(size_t(sy.value()), size_t{ 0 }, height - 1);
 
     auto sx = sampleContinuousDistribution1D(pBuffer + height + 1 + idx * (width + 1), width, s2D.x);
-    return PlaneSample(real2(sx.value(), sy.value()), sx.density() * sy.density());
+    return plane_sample(real2(sx.value(), sy.value()), sx.density() * sy.density());
 }
 
-Discrete2DSample sampleDiscreteDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D) {
+discrete_2d_sample sampleDiscreteDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D) {
     auto sy = sampleDiscreteDistribution1D(pBuffer, height, s2D.y);
     auto idx = sy.value();
 
     auto sx = sampleDiscreteDistribution1D(pBuffer + height + 1 + idx * (width + 1), width, s2D.x);
-    return Discrete2DSample(size2(sx.value(), sy.value()), sx.density() * sy.density());
+    return discrete_2d_sample(size2(sx.value(), sy.value()), sx.density() * sy.density());
 }
 
 real pdfContinuousDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& point) {

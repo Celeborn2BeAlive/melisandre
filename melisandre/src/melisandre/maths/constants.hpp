@@ -4,6 +4,7 @@
 
 namespace mls {
 
+using glm::one;
 using glm::zero;
 using glm::pi;
 using glm::one_over_pi;

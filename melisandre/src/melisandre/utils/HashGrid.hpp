@@ -178,7 +178,7 @@ public:
                 const tParticle &particle = aParticles[particleIndex];
 
                 const float distSqr =
-                    lengthSquared(queryPos - getPosition(particle));
+                    sqr_length(queryPos - getPosition(particle));
 
                 if(distSqr <= mRadiusSqr) {
                     aFunc(particle);

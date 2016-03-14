@@ -93,9 +93,9 @@ namespace mls {
     using real4x3 = tmat4x3<real>;
 
     template<typename T>
-    struct CoordsTraits {
-        static const auto Dimension = size_t{ 1 };
-        using ScalarType = T;
+    struct coords_traits {
+        static const auto dimension = size_t{ 1 };
+        using scalar_type = T;
 
         using coords1 = tcoords1<T>;
         using coords2 = tcoords2<T>;
@@ -127,31 +127,28 @@ namespace mls {
     };
 
     template<typename T>
-    struct CoordsTraits<tcoords1<T>> {
-        static const auto Dimension = size_t{ 1 };
-        using ScalarType = T;
+    struct coords_traits<tcoords1<T>> {
+        static const auto dimension = size_t{ 1 };
+        using scalar_type = T;
     };
 
     template<typename T>
-    struct CoordsTraits<tcoords2<T>> {
-        static const auto Dimension = size_t{ 2 };
-        using ScalarType = T;
+    struct coords_traits<tcoords2<T>> {
+        static const auto dimension = size_t{ 2 };
+        using scalar_type = T;
     };
 
     template<typename T>
-    struct CoordsTraits<tcoords3<T>> {
-        static const auto Dimension = size_t{ 3 };
-        using ScalarType = T;
+    struct coords_traits<tcoords3<T>> {
+        static const auto dimension = size_t{ 3 };
+        using scalar_type = T;
     };
 
     template<typename T>
-    struct CoordsTraits<tcoords4<T>> {
-        static const auto Dimension = size_t{ 4 };
-        using ScalarType = T;
+    struct coords_traits<tcoords4<T>> {
+        static const auto dimension = size_t{ 4 };
+        using scalar_type = T;
     };
 
-    template<typename T>
-    inline auto valuePtr(const T& value) {
-        return glm::value_ptr(value);
-    }
+    using glm::value_ptr;
 }

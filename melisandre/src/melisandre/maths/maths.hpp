@@ -1,7 +1,6 @@
 #pragma once
 
 #include "types.hpp"
-#include "common.hpp"
 #include "constants.hpp"
 #include "mappings/image_mappings.hpp"
 #include "mappings/paraboloid_mappings.hpp"

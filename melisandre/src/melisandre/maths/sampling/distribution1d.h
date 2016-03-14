@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sample.hpp"
+#include "sample.hpp"
 #include <iostream>
 #include <algorithm>
 //#include <melisandre/sys/threads.hpp>
@@ -46,9 +46,9 @@ void buildDistribution1D(const Functor& function, real* pCDF, size_t size,
     }
 }
 
-LineSample sampleContinuousDistribution1D(const real* pCDF, size_t size, real s1D);
+line_sample sampleContinuousDistribution1D(const real* pCDF, size_t size, real s1D);
 
-Discrete1DSample sampleDiscreteDistribution1D(const real* pCDF, size_t size, real s1D);
+discrete_1d_sample sampleDiscreteDistribution1D(const real* pCDF, size_t size, real s1D);
 
 real pdfContinuousDistribution1D(const real* pCDF, size_t size, real x);
 
@@ -73,7 +73,7 @@ real pdfCombinedDiscreteDistribution1D(size_t distributionCount, const GetCDFPtr
 }
 
 template<typename GetCDFPtrFunction>
-Discrete1DSample sampleCombinedDiscreteDistribution(std::size_t distributionCount, const GetCDFPtrFunction& getCDFPtr, std::size_t sampleCount, real s1D) {
+discrete_1d_sample sampleCombinedDiscreteDistribution(std::size_t distributionCount, const GetCDFPtrFunction& getCDFPtr, std::size_t sampleCount, real s1D) {
     struct IteratorData {
         uint32_t m_nDistributionCount = 0u;
         const GetCDFPtrFunction* m_pGetCDFPtr = nullptr;
@@ -129,7 +129,7 @@ Discrete1DSample sampleCombinedDiscreteDistribution(std::size_t distributionCoun
     iterator begin { &data, 0u }, end { &data, sampleCount };
 
     if(end.computeCurrentValue() == 0.f) {
-        return Discrete1DSample { 0u, 0.f };
+        return discrete_1d_sample { 0u, 0.f };
     }
 
     auto it = std::upper_bound(begin, end, s1D);
@@ -137,7 +137,7 @@ Discrete1DSample sampleCombinedDiscreteDistribution(std::size_t distributionCoun
 
     auto pdf = pdfCombinedDiscreteDistribution1D(distributionCount, getCDFPtr, i);
 
-    return Discrete1DSample(i, pdf);
+    return discrete_1d_sample(i, pdf);
 }
 
 }

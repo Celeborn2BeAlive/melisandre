@@ -24,9 +24,9 @@ namespace mls
         buildDistribution1D([&](uint32_t y) { return pBuffer[y]; }, pBuffer, height);
     }
 
-    PlaneSample sampleContinuousDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D);
+    plane_sample sampleContinuousDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D);
 
-    Discrete2DSample sampleDiscreteDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D);
+    discrete_2d_sample sampleDiscreteDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& s2D);
 
     real pdfContinuousDistribution2D(const real* pBuffer, size_t width, size_t height, const real2& point);
 

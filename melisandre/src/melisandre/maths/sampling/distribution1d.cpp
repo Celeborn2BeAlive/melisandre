@@ -22,24 +22,24 @@
 
 namespace mls {
 
-LineSample sampleContinuousDistribution1D(const real* pCDF, size_t size, real s1D) {
+line_sample sampleContinuousDistribution1D(const real* pCDF, size_t size, real s1D) {
     // coarse sampling of the distribution
     auto ptr = std::upper_bound(pCDF, pCDF + size, s1D);
     int i = clamp(int(ptr - pCDF - 1), 0, int(size) - 1);
     // refine sampling linearly by assuming the distribution being a step function
     real p = pCDF[i + 1] - pCDF[i];
     real fraction = (s1D - pCDF[i]) / p;
-    return LineSample(i + fraction, p * size);
+    return line_sample(i + fraction, p * size);
 }
 
-Discrete1DSample sampleDiscreteDistribution1D(const real* pCDF, size_t size, real s1D) {
+discrete_1d_sample sampleDiscreteDistribution1D(const real* pCDF, size_t size, real s1D) {
     if(pCDF[size] == 0.f) {
-        return Discrete1DSample(0u, 0.f);
+        return discrete_1d_sample(0u, 0.f);
     }
 
     auto ptr = std::upper_bound(pCDF, pCDF + size, s1D);
     int i = clamp(int(ptr - pCDF - 1), 0, int(size) - 1);
-    return Discrete1DSample(i, pCDF[i + 1] - pCDF[i]);
+    return discrete_1d_sample(i, pCDF[i + 1] - pCDF[i]);
 }
 
 real pdfContinuousDistribution1D(const real* pCDF, size_t size, real x) {
