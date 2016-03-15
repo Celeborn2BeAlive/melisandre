@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
+
+#include <melisandre/utils/EventDispatcher.hpp>
 #include <melisandre/viewer/gui.hpp>
 
 namespace mls
@@ -48,34 +51,54 @@ class ComputeGraph;
 
 class ComputeNode {
 public:
+    class Input {
+    public:
+        using EventDispatcher = EventDispatcher<void()>;
+        using EventListener = EventDispatcher::ListenerType;
+
+        template<typename Functor>
+        EventListener onChanged(Functor&& f) {
+            m_Dispatcher.addListener(f);
+        }
+    private:
+        EventDispatcher m_Dispatcher;
+    };
+
+    class Output {
+    public:
+        void notify(); // Notify all connected inputs that the output changed
+    private:
+    };
+
     ComputeNode(const ComputeGraph& graph) {
     }
+
+protected:
+    template<typename T>
+    Input addInput(const std::string& name, T& ref) {
+        return Input{};
+    }
+
+    template<typename T>
+    Output addOutput(const std::string& name, T& ref, std::vector<Input> dependencies = {}) {
+        return Output{};
+    }
 private:
-};
-
-class ComputeNodeAttr
-{
-
-};
-
-class ComputeNodeInput
-{
-
-};
-
-class ComputeNodeOutput
-{
-
+    std::unordered_map<std::string, Input> m_InputMap;
+    std::unordered_map<std::string, Output> m_OutputMap;
 };
 
 class ComputeGraph
 {
+public:
+    ComputeGraph(const std::string& name);
 
-};
+    ComputeNode getNode(const std::string& id);
 
-struct ComputeNodeManager
-{
-    
+    void connect(ComputeNode::Input in, ComputeNode::Output out);
+
+private:
+    std::unordered_map<std::string, ComputeNode> m_NodeMap;
 };
 
 template<typename T>

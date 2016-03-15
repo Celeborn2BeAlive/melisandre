@@ -102,22 +102,6 @@ using namespace mls;
 
 #include <melisandre/utils/EventDispatcher.hpp>
 
-struct handler {
-    void notify() {};
-};
-
-using Input = EventDispatcher<void()>;
-
-template<typename T>
-Input addInput(const std::string& name, T& ref) {
-
-}
-
-template<typename T>
-handler addOutput(const std::string& name, T& ref, std::vector<EventDispatcher<void()>> dependencies = {}) {
-
-}
-
 class GLGBufferRenderNode: public ComputeNode {
 public:
     static const size_t nodeID;
@@ -125,14 +109,6 @@ public:
     GLGBufferRenderNode(ComputeGraph& graph) :
         ComputeNode { graph }
     {
-        auto x = [this]() {
-            gbufferRenderPass = makeUnique<GLGBufferRenderPass>(*shaderManager);
-        };
-        x();
-
-        Input::ListenerType listener = shaderManagerInput.addListener([this]() {
-            gbufferRenderPass = makeUnique<GLGBufferRenderPass>(*shaderManager);
-        });
     }
 
     void compute() {
@@ -164,12 +140,12 @@ private:
     Input shaderManagerInput = addInput("shaderManager", shaderManager);
 
     // Compliqué...
-    Input::ListenerType listener = shaderManagerInput.addListener([this]() {
+    Input::EventListener listener = shaderManagerInput.onChanged([this]() {
         gbufferRenderPass = makeUnique<GLGBufferRenderPass>(*shaderManager);
     });
 
-    handler gBufferOutput = addOutput("GBuffer", gBuffer, { zFarInput, projMatrixInput, viewMatrixInput, sceneInput }); // a dependency list
-    handler computeTimeOutput = addOutput("computeTime", computeTime);
+    Output gBufferOutput = addOutput("GBuffer", gBuffer, { zFarInput, projMatrixInput, viewMatrixInput, sceneInput }); // a dependency list
+    Output computeTimeOutput = addOutput("computeTime", computeTime);
 };
 
 const size_t GLGBufferRenderNode::nodeID = addNodeType<GLGBufferRenderNode>("GLGBufferRenderNode");
