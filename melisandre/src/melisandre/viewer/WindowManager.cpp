@@ -5,8 +5,7 @@
 
 #include <cassert>
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_internal.h"
+#include "gui.hpp"
 #include "imgui/imgui_impl_sdl.h"
 
 namespace mls
