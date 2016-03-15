@@ -106,8 +106,10 @@ struct handler {
     void notify() {};
 };
 
+using Input = EventDispatcher<void()>;
+
 template<typename T>
-EventDispatcher<void()> addInput(const std::string& name, T& ref) {
+Input addInput(const std::string& name, T& ref) {
 
 }
 
@@ -123,7 +125,14 @@ public:
     GLGBufferRenderNode(ComputeGraph& graph) :
         ComputeNode { graph }
     {
-        
+        auto x = [this]() {
+            gbufferRenderPass = makeUnique<GLGBufferRenderPass>(*shaderManager);
+        };
+        x();
+
+        Input::ListenerType listener = shaderManagerInput.addListener([this]() {
+            gbufferRenderPass = makeUnique<GLGBufferRenderPass>(*shaderManager);
+        });
     }
 
     void compute() {
@@ -148,14 +157,14 @@ private:
     GLGBuffer gBuffer;
     uint64_t computeTime; // Example of a statistic
 
-    EventDispatcher<void()> zFarInput = addInput("zFar", zFar);
-    EventDispatcher<void()> projMatrixInput = addInput("projMatrix", projMatrix);
-    EventDispatcher<void()> viewMatrixInput = addInput("viewMatrix", viewMatrix);
-    EventDispatcher<void()> sceneInput = addInput("scene", pScene);
-    EventDispatcher<void()> shaderManagerInput = addInput("shaderManager", shaderManager);
+    Input zFarInput = addInput("zFar", zFar);
+    Input projMatrixInput = addInput("projMatrix", projMatrix);
+    Input viewMatrixInput = addInput("viewMatrix", viewMatrix);
+    Input sceneInput = addInput("scene", pScene);
+    Input shaderManagerInput = addInput("shaderManager", shaderManager);
 
     // Compliqué...
-    std::function<void(void)> listener = shaderManagerInput.addListener([this]() {
+    Input::ListenerType listener = shaderManagerInput.addListener([this]() {
         gbufferRenderPass = makeUnique<GLGBufferRenderPass>(*shaderManager);
     });
 

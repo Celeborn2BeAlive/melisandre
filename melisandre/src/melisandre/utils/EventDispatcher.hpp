@@ -13,13 +13,13 @@ template <typename CallbackType>
 class EventDispatcher;
 
 template <typename CallbackType>
-class Listener final {
+class EventListener final {
     std::shared_ptr<CallbackType> m_Ptr;
 
     friend class EventDispatcher<CallbackType>;
 public:
     template <typename ...ArgTypes>
-    Listener(ArgTypes... args) :
+    EventListener(ArgTypes... args) :
         m_Ptr(std::make_shared<CallbackType>(std::forward<ArgTypes>(args)...)) {
     }
 
@@ -40,8 +40,10 @@ private:
     std::vector<std::weak_ptr<CallbackType>> m_Callbacks;
     size_t m_nConcurrentDispatcherCount = 0;
 public:
-    Listener<CallbackType> addListener(CallbackType&& callback) {
-        Listener<CallbackType> listener(callback);
+    using ListenerType = EventListener<CallbackType>;
+
+    ListenerType addListener(CallbackType&& callback) {
+        ListenerType listener(callback);
         m_Callbacks.push_back(listener.m_Ptr);
         return listener;
     }
@@ -76,8 +78,11 @@ public:
 
 template<typename ReturnType, typename ...ArgsTypes>
 class EventDispatcher<ReturnType(ArgsTypes...)> final {
-    EventDispatcher<std::function<ReturnType(ArgsTypes...)>> m_Dispatcher;
+    using ForwardDispatcher = EventDispatcher<std::function<ReturnType(ArgsTypes...)>>;
+    ForwardDispatcher m_Dispatcher;
 public:
+    using ListenerType = typename ForwardDispatcher::ListenerType;
+
     template<typename CallbackType>
     auto addListener(CallbackType&& callback) {
         return m_Dispatcher.addListener(callback);
