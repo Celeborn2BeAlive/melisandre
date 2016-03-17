@@ -2,6 +2,8 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <queue>
 
 #include <melisandre/utils/EventDispatcher.hpp>
 #include <melisandre/viewer/gui.hpp>
@@ -51,51 +53,104 @@ class ComputeGraph;
 
 class ComputeNode {
 public:
-    class Input {
-    public:
-        using EventDispatcher = EventDispatcher<void()>;
-        using EventListener = EventDispatcher::ListenerType;
-
-        template<typename Functor>
-        EventListener onChanged(Functor&& f) {
-            m_Dispatcher.addListener(f);
-        }
-    private:
-        EventDispatcher m_Dispatcher;
+    enum class VarType {
+        In, Out, InOut
     };
 
-    class Output {
-    public:
-        void notify(); // Notify all connected inputs that the output changed
-    private:
+    template<typename T, VarType type = VarType::InOut>
+    struct Var {
+        Var(std::string name, const T& defaultValue = T{});
+
+        const T& get() const;
+
+        T& get();
+
+        void notify();
     };
 
     ComputeNode(const ComputeGraph& graph) {
     }
 
+private:
+    friend class ComputeGraph;
+
+    virtual void compute() = 0;
+
 protected:
     template<typename T>
-    Input addInput(const std::string& name, T& ref) {
-        return Input{};
+    Var<T, VarType::In> addVarIn(const std::string& name, T& ref) {
+        
     }
 
     template<typename T>
-    Output addOutput(const std::string& name, T& ref, std::vector<Input> dependencies = {}) {
-        return Output{};
+    Var<T, VarType::Out> addVarOut(const std::string& name, T& ref) {
+        
     }
+
+    template<typename T>
+    Var<T, VarType::InOut> addVarInOut(const std::string& name, T& ref) {
+
+    }
+
 private:
-    std::unordered_map<std::string, Input> m_InputMap;
-    std::unordered_map<std::string, Output> m_OutputMap;
+    //std::unordered_map<std::string, Input> m_InputMap;
+    //std::unordered_map<std::string, Output> m_OutputMap;
 };
 
 class ComputeGraph
 {
 public:
+    typedef size_t NodeID;
+
+    struct Output;
+
+    struct Input {
+        NodeID getNode();
+        Output* getConnectedOutput();
+    };
+
+    struct Output {
+        bool hasChanged();
+        std::vector<Input> getConnectedInputs();
+    };
+
     ComputeGraph(const std::string& name);
 
-    ComputeNode getNode(const std::string& id);
+    ComputeNode* getNode(const std::string& id);
 
-    void connect(ComputeNode::Input in, ComputeNode::Output out);
+    ComputeNode* getNode(NodeID id);
+
+    //void connect(ComputeNode::Input in, ComputeNode::Output out);
+
+    void compute(NodeID node) {
+        std::unordered_set<NodeID> visitSet;
+
+        std::queue<NodeID> computeQueue;
+        computeQueue.push(node);
+        visitSet.emplace(node);
+
+        while (!computeQueue.empty()) {
+            auto current = computeQueue.back();
+            computeQueue.pop();
+            getNode(current)->compute();
+
+            for (auto out : getOutputs(current)) {
+                if (out.hasChanged()) {
+                    for (auto in : out.getConnectedInputs()) {
+                        auto node = in.getNode();
+                        if (visitSet.find(node) == end(visitSet)) {
+                            computeQueue.push(node);
+                            visitSet.emplace(node);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    std::vector<Output> getOutputs(NodeID node);
+
+
 
 private:
     std::unordered_map<std::string, ComputeNode> m_NodeMap;

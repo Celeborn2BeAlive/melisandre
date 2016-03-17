@@ -102,6 +102,8 @@ using namespace mls;
 
 #include <melisandre/utils/EventDispatcher.hpp>
 
+const mls::GLShaderManager& getShaderManager();
+
 class GLGBufferRenderNode: public ComputeNode {
 public:
     static const size_t nodeID;
@@ -112,40 +114,36 @@ public:
     }
 
     void compute() {
-        if (pScene && gbufferRenderPass) {
-            gbufferRenderPass->render(projMatrix, viewMatrix, zFar, *pScene, gBuffer);
-            gBufferOutput.notify();
+        if (pScene.get()) {
+            gbufferRenderPass.render(projMatrix.get(), viewMatrix, zFar.get(), *pScene.get(), gBuffer.get());
+            gBuffer.notify();
         }
     }
 
 private:
     // Inputs:
-    float zFar;  // Output of viewcontrollernode must be connected here
-    float4x4 projMatrix = float4x4(1); // Output of viewcontrollernode must be connected here
+    Var<float> zFar{ "zFar", 1.f };  // Output of viewcontrollernode must be connected here
+    Var<float4x4> projMatrix{ "projMatrix", float4x4(1) }; // Output of viewcontrollernode must be connected here
     float4x4 viewMatrix = float4x4(1); // Output of viewcontrollernode must be connected here
-    const GLScene* pScene = nullptr;
-    const GLShaderManager* shaderManager = nullptr;
+    Var<const GLScene*> pScene{ "pScene", nullptr };
 
     // Intermediate:
-    Unique<GLGBufferRenderPass> gbufferRenderPass;
+    GLGBufferRenderPass gbufferRenderPass{ getShaderManager() }; // Se construit à partir du shader manager global et fuck
 
     // Outputs:
-    GLGBuffer gBuffer;
+    Var<GLGBuffer, VarType::Out> gBuffer{ "GBuffer" };
     uint64_t computeTime; // Example of a statistic
 
-    Input zFarInput = addInput("zFar", zFar);
-    Input projMatrixInput = addInput("projMatrix", projMatrix);
-    Input viewMatrixInput = addInput("viewMatrix", viewMatrix);
-    Input sceneInput = addInput("scene", pScene);
-    Input shaderManagerInput = addInput("shaderManager", shaderManager);
+    //Input zFarInput = addInput("zFar", zFar);
+    //Input projMatrixInput = addInput("projMatrix", projMatrix);
+    Var<float4x4> viewMatrixVar = addVarInOut("viewMatrix", viewMatrix);
 
-    // Compliqué...
-    Input::EventListener listener = shaderManagerInput.onChanged([this]() {
-        gbufferRenderPass = makeUnique<GLGBufferRenderPass>(*shaderManager);
-    });
+    //// Compliqué... JUSTE NOPE
+    //Input::EventListener listener = shaderManager.input().onChanged([this]() {
+    //    gbufferRenderPass = makeUnique<GLGBufferRenderPass>(*shaderManager);    
+    //});
 
-    Output gBufferOutput = addOutput("GBuffer", gBuffer, { zFarInput, projMatrixInput, viewMatrixInput, sceneInput }); // a dependency list
-    Output computeTimeOutput = addOutput("computeTime", computeTime);
+    Var<uint64_t, VarType::Out> computeTimeVar = addVarOut("computeTime", computeTime);
 };
 
 const size_t GLGBufferRenderNode::nodeID = addNodeType<GLGBufferRenderNode>("GLGBufferRenderNode");
