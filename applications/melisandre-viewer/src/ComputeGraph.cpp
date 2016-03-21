@@ -2,6 +2,8 @@
 
 #include "ComputeGraph.hpp"
 
+#include <iostream>
+
 namespace mls
 {
 
@@ -119,29 +121,41 @@ void ShowExampleAppCustomNodeGraph(ImVector<Node>& nodes, ImVector<NodeLink>& li
         node->Size = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING;
         ImVec2 node_rect_max = node_rect_min + node->Size;
 
-        // Display node box
-        draw_list->ChannelsSetCurrent(0); // Background
-        ImGui::SetCursorScreenPos(node_rect_min);
-        ImGui::InvisibleButton("node", node->Size);
-        if (ImGui::IsItemHovered())
-        {
-            node_hovered_in_scene = node->ID;
-            open_context_menu |= ImGui::IsMouseClicked(1);
-        }
-        bool node_moving_active = ImGui::IsItemActive();
-        if (node_widgets_active || node_moving_active)
-            node_selected = node->ID;
-        if (node_moving_active && ImGui::IsMouseDragging(0))
-            node->Pos = node->Pos + ImGui::GetIO().MouseDelta;
-
-        ImU32 node_bg_color = (node_hovered_in_list == node->ID || node_hovered_in_scene == node->ID || (node_hovered_in_list == -1 && node_selected == node->ID)) ? ImColor(75, 75, 75) : ImColor(60, 60, 60);
-        draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, 4.0f);
-        draw_list->AddRect(node_rect_min, node_rect_max, ImColor(100, 100, 100), 4.0f);
         for (int slot_idx = 0; slot_idx < node->InputsCount; slot_idx++)
             draw_list->AddCircleFilled(offset + node->GetInputSlotPos(slot_idx), NODE_SLOT_RADIUS, ImColor(150, 150, 150, 150));
-        for (int slot_idx = 0; slot_idx < node->OutputsCount; slot_idx++)
-            draw_list->AddCircleFilled(offset + node->GetOutputSlotPos(slot_idx), NODE_SLOT_RADIUS, ImColor(150, 150, 150, 150));
+        for (int slot_idx = 0; slot_idx < node->OutputsCount; slot_idx++) {
+            //draw_list->AddCircleFilled(offset + node->GetOutputSlotPos(slot_idx), NODE_SLOT_RADIUS, ImColor(150, 150, 150, 150));
+            //ImGui::InvisibleButton("node_output", ImVec2(NODE_SLOT_RADIUS, NODE_SLOT_RADIUS));
+            ImGui::SetCursorScreenPos(offset + node->GetOutputSlotPos(slot_idx));
+            ImGui::Button("output", ImVec2(NODE_SLOT_RADIUS * 2, NODE_SLOT_RADIUS * 2));
+            if (ImGui::IsItemHovered())
+            {
+                draw_list->AddCircleFilled(offset + node->GetOutputSlotPos(slot_idx), NODE_SLOT_RADIUS, ImColor(150, 150, 150, 255));
+            }
+            else {
+                draw_list->AddCircleFilled(offset + node->GetOutputSlotPos(slot_idx), NODE_SLOT_RADIUS, ImColor(150, 150, 150, 150));
+            }
+        }
 
+        // Display node box
+        //draw_list->ChannelsSetCurrent(0); // Background
+        //ImGui::SetCursorScreenPos(node_rect_min);
+        //ImGui::InvisibleButton("node", node->Size);
+        //if (ImGui::IsItemHovered())
+        //{
+        //    node_hovered_in_scene = node->ID;
+        //    open_context_menu |= ImGui::IsMouseClicked(1);
+        //}
+        //bool node_moving_active = ImGui::IsItemActive();
+        //if (node_widgets_active || node_moving_active)
+        //    node_selected = node->ID;
+        //if (node_moving_active && ImGui::IsMouseDragging(0))
+        //    node->Pos = node->Pos + ImGui::GetIO().MouseDelta;
+
+        //ImU32 node_bg_color = (node_hovered_in_list == node->ID || node_hovered_in_scene == node->ID || (node_hovered_in_list == -1 && node_selected == node->ID)) ? ImColor(75, 75, 75) : ImColor(60, 60, 60);
+        //draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, 4.0f);
+        //draw_list->AddRect(node_rect_min, node_rect_max, ImColor(100, 100, 100), 4.0f);
+        
         ImGui::PopID();
     }
     draw_list->ChannelsMerge();

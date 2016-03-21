@@ -114,7 +114,7 @@ public:
     }
 
     void compute() {
-        if (pScene.get()) {
+        if (pScene.get() && (projMatrix.hasChanged() || viewMatrixVar.hasChanged() || zFar.hasChanged())) {
             gbufferRenderPass.render(projMatrix.get(), viewMatrix, zFar.get(), *pScene.get(), gBuffer.get());
             gBuffer.notify();
         }

@@ -4,6 +4,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <queue>
+#include <stack>
+#include <iterator>
+#include <algorithm>
 
 #include <melisandre/utils/EventDispatcher.hpp>
 #include <melisandre/viewer/gui.hpp>
@@ -66,6 +69,8 @@ public:
         T& get();
 
         void notify();
+
+        bool hasChanged();
     };
 
     ComputeNode(const ComputeGraph& graph) {
@@ -110,6 +115,7 @@ public:
     };
 
     struct Output {
+        NodeID getNode();
         bool hasChanged();
         std::vector<Input> getConnectedInputs();
     };
@@ -122,31 +128,83 @@ public:
 
     //void connect(ComputeNode::Input in, ComputeNode::Output out);
 
-    void compute(NodeID node) {
+    std::unordered_set<NodeID> computeConnectedComponent(NodeID srcNode) {
         std::unordered_set<NodeID> visitSet;
+        std::stack<NodeID> visitStack;
+        visitStack.push(srcNode);
+        visitStack.emplace(srcNode);
 
-        std::queue<NodeID> computeQueue;
-        computeQueue.push(node);
-        visitSet.emplace(node);
+        while (!visitStack.empty()) {
+            auto currentNode = visitStack.top();
+            visitStack.pop();
 
-        while (!computeQueue.empty()) {
-            auto current = computeQueue.back();
-            computeQueue.pop();
-            getNode(current)->compute();
-
-            for (auto out : getOutputs(current)) {
-                if (out.hasChanged()) {
-                    for (auto in : out.getConnectedInputs()) {
-                        auto node = in.getNode();
-                        if (visitSet.find(node) == end(visitSet)) {
-                            computeQueue.push(node);
-                            visitSet.emplace(node);
-                        }
+            for (auto out : getOutputs(currentNode)) {
+                for (auto in : out.getConnectedInputs()) {
+                    auto node = in.getNode();
+                    if (visitSet.find(node) == end(visitSet)) {
+                        visitStack.push(node);
+                        visitSet.emplace(node);
                     }
                 }
             }
         }
+
+        return visitSet;
     }
+
+    // Compute the priority of a node for a given visit set, stored as keys of the map 'priorities'
+    size_t computeForwardPriority(NodeID node, std::unordered_map<NodeID, size_t>& priorities) {
+        // Priority not yet computed
+        if (!priorities[node]) {
+            auto maxPriority = size_t{ 0 };
+
+            // Compute the map of parent priotities:
+            for (auto in : getInputs(node)) {
+                auto pOutput = in.getConnectedOutput();
+                if (!pOutput) {
+                    continue;
+                }
+                auto neighbor = pOutput->getNode();
+                // Only affect a priority to nodes in the visit set
+                if (priorities.find(neighbor) == std::end(priorities)) {
+                    continue;
+                }
+                auto neighborPriority = computeForwardPriority(neighbor, priorities);
+                maxPriority = std::max(maxPriority, neighborPriority);
+            }
+
+            priorities[node] = maxPriority + 1;
+        }
+
+        return priorities[node];
+    }
+
+    void computeForward(NodeID srcNode) {
+        auto visitSet = computeConnectedComponent(srcNode);
+
+        std::unordered_map<NodeID, size_t> priorities;
+        for (auto node : visitSet) {
+            priorities[node] = 0;
+        }
+        priorities[srcNode] = 1;
+
+        for (auto node : visitSet) {
+            computeForwardPriority(node, priorities);
+        }
+
+        std::vector<std::pair<NodeID, size_t>> nodes;
+        nodes.reserve(size(priorities));
+        std::copy(begin(priorities), end(priorities), std::back_inserter(nodes));
+        std::sort(begin(nodes), end(nodes), [&](auto lhs, auto rhs) {
+            return lhs.second < rhs.second;
+        });
+
+        for (auto nodePair : nodes) {
+            getNode(nodePair.first)->compute();
+        }
+    }
+
+    std::vector<Input> getInputs(NodeID node);
 
     std::vector<Output> getOutputs(NodeID node);
 
