@@ -108,10 +108,10 @@ class GLGBufferRenderNode: public ComputeNode {
 public:
     static const size_t nodeID;
 
-    GLGBufferRenderNode(ComputeGraph& graph) :
-        ComputeNode { graph }
-    {
-    }
+    //GLGBufferRenderNode(ComputeGraph& graph) :
+    //    ComputeNode { graph }
+    //{
+    //}
 
     void compute() {
         if (pScene.get() && (projMatrix.hasChanged() || viewMatrixVar.hasChanged() || zFar.hasChanged())) {
@@ -323,6 +323,8 @@ int main(int argc, char* argv[])
     });
 
 
+    ComputeGraph graph("testGraph");
+
     int currentItem = 0;
 
     while (!done) {
@@ -336,7 +338,8 @@ int main(int argc, char* argv[])
         glViewport(0, 0, win1Size.x, win1Size.y);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        ShowExampleAppCustomNodeGraph(nodes, links, win1Size.x, win1Size.y);
+        //ShowExampleAppCustomNodeGraph(nodes, links, win1Size.x, win1Size.y);
+        graph.drawGUI(win1Size.x, win1Size.y);
 
         glUseProgram(gProgramID);
 
