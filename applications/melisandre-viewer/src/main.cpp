@@ -308,9 +308,6 @@ int main(int argc, char* argv[])
 
     bool show_window1 = true;
 
-    ImVector<Node> nodes;
-    ImVector<NodeLink> links;
-
     int2 mousePrevPosition;
 
     auto closedListener = windowManager.onWindowClosed([&](auto windowID) {

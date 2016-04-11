@@ -49,6 +49,12 @@ public:
     //ComputeNode(const ComputeGraph& graph) {
     //}
 
+    virtual int getInputsCount() const = 0;
+
+    virtual int getOutputsCount() const = 0;
+
+    virtual void drawGUI() = 0;
+
 private:
     friend class ComputeGraph;
 
@@ -184,8 +190,35 @@ public:
     void drawGUI(size_t width, size_t height, bool* pOpened = nullptr);
 
 private:
+    struct NodeWidget {
+        std::string name;
+        ImVec2  position;
+        ImVec2 size;
+    };
+
+    struct NodeLink
+    {
+        int     InputIdx, InputSlot, OutputIdx, OutputSlot;
+
+        NodeLink(int input_idx, int input_slot, int output_idx, int output_slot) { InputIdx = input_idx; InputSlot = input_slot; OutputIdx = output_idx; OutputSlot = output_slot; }
+    };
+
+    void addDummyNode(const std::string& name, const ImVec2& pos, float value, const ImVec4& color, int inputs_count, int outputs_count);
+
+    ImVec2 GetInputSlotPos(int node_idx, int slot_no) const;
+
+    ImVec2 GetOutputSlotPos(int node_idx, int slot_no) const;
+
+    // This function must:
+    // - test if the link does not exists already
+    // - test if the types match
+    void addLink(int srcNode, int outputIdx, int dstNode, int intputIdx);
+
     std::vector<std::unique_ptr<ComputeNode>> m_Nodes;
+    std::vector<NodeWidget> m_NodeWidgets;
     std::unordered_map<std::string, NodeID> m_NodeMap;
+
+    std::vector<NodeLink> m_Links;
 
     std::vector<std::vector<Input>> m_NodeInputs;
     std::vector<std::vector<Output>> m_NodeOutputs;
@@ -195,38 +228,5 @@ template<typename T>
 size_t addNodeType(const std::string& name) {
     return 0;
 }
-
-
-
-
-
-struct Node
-{
-    int     ID;
-    char    Name[32];
-    ImVec2  Pos, Size;
-    float   Value;
-    ImVec4  Color;
-    int     InputsCount, OutputsCount;
-
-    Node(int id, const char* name, const ImVec2& pos, float value, const ImVec4& color, int inputs_count, int outputs_count) {
-        ID = id; strncpy(Name, name, 31); Name[31] = 0; Pos = pos; Value = value; Color = color; InputsCount = inputs_count; OutputsCount = outputs_count;
-    }
-
-    ImVec2 GetInputSlotPos(int slot_no) const { return ImVec2(Pos.x, Pos.y + Size.y * ((float)slot_no + 1) / ((float)InputsCount + 1)); }
-    ImVec2 GetOutputSlotPos(int slot_no) const { return ImVec2(Pos.x + Size.x, Pos.y + Size.y * ((float)slot_no + 1) / ((float)OutputsCount + 1)); }
-};
-
-struct NodeLink
-{
-    int     InputIdx, InputSlot, OutputIdx, OutputSlot;
-
-    NodeLink(int input_idx, int input_slot, int output_idx, int output_slot) { InputIdx = input_idx; InputSlot = input_slot; OutputIdx = output_idx; OutputSlot = output_slot; }
-};
-
-// Really dumb data structure provided for the example.
-// Note that we storing links are INDICES (not ID) to make example code shorter, obviously a bad idea for any general purpose code.
-void ShowExampleAppCustomNodeGraph(ImVector<Node>& nodes, ImVector<NodeLink>& links, size_t width, size_t height, bool* opened = nullptr);
-
 
 }
