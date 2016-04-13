@@ -7,6 +7,7 @@
 #include <stack>
 #include <iterator>
 #include <algorithm>
+#include <iostream>
 
 #include <melisandre/utils/EventDispatcher.hpp>
 #include <melisandre/viewer/gui.hpp>
@@ -27,58 +28,30 @@ namespace mls
 
 class ComputeGraph;
 
+struct ComputeValue; // Generic value
+
 class ComputeNode {
-public:
-    enum class VarType {
-        In, Out, InOut
-    };
-
-    template<typename T, VarType type = VarType::InOut>
-    struct Var {
-        Var(std::string name, const T& defaultValue = T{});
-
-        const T& get() const;
-
-        T& get();
-
-        void notify();
-
-        bool hasChanged();
-    };
-
-    //ComputeNode(const ComputeGraph& graph) {
-    //}
-
-    virtual int getInputsCount() const = 0;
-
-    virtual int getOutputsCount() const = 0;
-
-    virtual void drawGUI() = 0;
-
 private:
     friend class ComputeGraph;
 
     virtual void compute() = 0;
 
-protected:
-    template<typename T>
-    Var<T, VarType::In> addVarIn(const std::string& name, T& ref) {
-        
+    virtual std::unique_ptr<ComputeNode> clone() const = 0;
+
+    virtual int getInputsCount() const = 0;
+
+    virtual int getOutputsCount() const = 0;
+
+    virtual void setInput(size_t slot, const ComputeValue& value) {
     }
 
-    template<typename T>
-    Var<T, VarType::Out> addVarOut(const std::string& name, T& ref) {
-        
+    virtual ComputeValue& getOutput(size_t slot) const {
     }
 
-    template<typename T>
-    Var<T, VarType::InOut> addVarInOut(const std::string& name, T& ref) {
-
+    virtual void drawGUI() = 0;
+public:
+    virtual ~ComputeNode() {
     }
-
-private:
-    //std::unordered_map<std::string, Input> m_InputMap;
-    //std::unordered_map<std::string, Output> m_OutputMap;
 };
 
 class ComputeGraph
@@ -86,44 +59,30 @@ class ComputeGraph
 public:
     typedef size_t NodeID;
 
-    struct Output;
-
-    struct Input {
-        NodeID getNode();
-        Output* getConnectedOutput();
-    };
-
-    struct Output {
-        NodeID getNode();
-        bool hasChanged();
-        std::vector<Input> getConnectedInputs();
-    };
-
     ComputeGraph(const std::string& name) {}
-
-    ComputeNode* getNode(const std::string& id);
-
-    ComputeNode* getNode(NodeID id);
-
-    //void connect(ComputeNode::Input in, ComputeNode::Output out);
 
     std::unordered_set<NodeID> computeConnectedComponent(NodeID srcNode) {
         std::unordered_set<NodeID> visitSet;
         std::stack<NodeID> visitStack;
-        visitStack.push(srcNode);
+
         visitStack.emplace(srcNode);
+        visitSet.emplace(srcNode);
+
+        std::cerr << "srcNode = " << srcNode << std::endl;
 
         while (!visitStack.empty()) {
             auto currentNode = visitStack.top();
             visitStack.pop();
 
-            for (auto out : getOutputs(currentNode)) {
-                for (auto in : out.getConnectedInputs()) {
-                    auto node = in.getNode();
-                    if (visitSet.find(node) == end(visitSet)) {
-                        visitStack.push(node);
-                        visitSet.emplace(node);
-                    }
+            std::cerr << "currentNode = " << currentNode << std::endl;
+
+            for (auto out : m_Nodes[currentNode].outputLinks) {
+                const auto& linkOut = m_Links[out];
+                auto node = linkOut.dstNodeIdx;
+                if (visitSet.find(node) == end(visitSet)) {
+                    visitStack.push(node);
+                    visitSet.emplace(node);
+                    std::cerr << "node = " << node << std::endl;
                 }
             }
         }
@@ -132,24 +91,23 @@ public:
     }
 
     // Compute the priority of a node for a given visit set, stored as keys of the map 'priorities'
-    size_t computeForwardPriority(NodeID node, std::unordered_map<NodeID, size_t>& priorities) {
+    size_t computeForwardPriority(NodeID node, std::unordered_map<NodeID, int>& priorities) {
         // Priority not yet computed
-        if (!priorities[node]) {
+        if (priorities[node] == 0) {
+            priorities[node] = -1; // priority is being computed
+
             auto maxPriority = size_t{ 0 };
 
             // Compute the map of parent priotities:
-            for (auto in : getInputs(node)) {
-                auto pOutput = in.getConnectedOutput();
-                if (!pOutput) {
-                    continue;
-                }
-                auto neighbor = pOutput->getNode();
+            for (auto in : m_Nodes[node].inputLinks) {
+                const auto& linkIn = m_Links[in];
+                auto nodeIn = linkIn.srcNodeIdx;
                 // Only affect a priority to nodes in the visit set
-                if (priorities.find(neighbor) == std::end(priorities)) {
+                if (priorities.find(nodeIn) == std::end(priorities) || priorities[nodeIn] == -1) {
                     continue;
                 }
-                auto neighborPriority = computeForwardPriority(neighbor, priorities);
-                maxPriority = std::max(maxPriority, neighborPriority);
+                auto nodeInPriority = computeForwardPriority(nodeIn, priorities);
+                maxPriority = std::max(maxPriority, nodeInPriority);
             }
 
             priorities[node] = maxPriority + 1;
@@ -161,7 +119,9 @@ public:
     void computeForward(NodeID srcNode) {
         auto visitSet = computeConnectedComponent(srcNode);
 
-        std::unordered_map<NodeID, size_t> priorities;
+        std::cerr << "nb node to visit " << size(visitSet) << std::endl;
+
+        std::unordered_map<NodeID, int> priorities;
         for (auto node : visitSet) {
             priorities[node] = 0;
         }
@@ -179,31 +139,31 @@ public:
         });
 
         for (auto nodePair : nodes) {
-            getNode(nodePair.first)->compute();
+            auto currentNode = nodePair.first;
+
+            std::cerr << "Computing node index " << currentNode << std::endl;
+            m_Nodes[currentNode].node->compute();
+
+            for (auto out : m_Nodes[currentNode].outputLinks) {
+                const auto& link = m_Links[out];
+                m_Nodes[link.dstNodeIdx].setInput(link.dstNodeSlotIdx, m_Nodes[currentNode].getOutput(link.srcNodeSlotIdx));
+            }
         }
     }
-
-    std::vector<Input> getInputs(NodeID node);
-
-    std::vector<Output> getOutputs(NodeID node);
 
     void drawGUI(size_t width, size_t height, bool* pOpened = nullptr);
 
 private:
-    struct NodeWidget {
-        std::string name;
-        ImVec2  position;
-        ImVec2 size;
-    };
-
     struct NodeLink
     {
-        int     InputIdx, InputSlot, OutputIdx, OutputSlot;
+        int srcNodeIdx, srcNodeSlotIdx, dstNodeIdx, dstNodeSlotIdx;
 
-        NodeLink(int input_idx, int input_slot, int output_idx, int output_slot) { InputIdx = input_idx; InputSlot = input_slot; OutputIdx = output_idx; OutputSlot = output_slot; }
+        NodeLink(int input_idx, int input_slot, int output_idx, int output_slot) { srcNodeIdx = input_idx; srcNodeSlotIdx = input_slot; dstNodeIdx = output_idx; dstNodeSlotIdx = output_slot; }
     };
 
     void addDummyNode(const std::string& name, const ImVec2& pos, float value, const ImVec4& color, int inputs_count, int outputs_count);
+
+    void addIntNode(const std::string& name, const ImVec2& pos);
 
     ImVec2 GetInputSlotPos(int node_idx, int slot_no) const;
 
@@ -212,16 +172,20 @@ private:
     // This function must:
     // - test if the link does not exists already
     // - test if the types match
-    void addLink(int srcNode, int outputIdx, int dstNode, int intputIdx);
+    bool addLink(int srcNode, int outputIdx, int dstNode, int inputIdx);
 
-    std::vector<std::unique_ptr<ComputeNode>> m_Nodes;
-    std::vector<NodeWidget> m_NodeWidgets;
-    std::unordered_map<std::string, NodeID> m_NodeMap;
+    struct NodeInstance {
+        std::string name;
+        ImVec2 position;
+        ImVec2 size;
+        std::unique_ptr<ComputeNode> node;
 
+        std::vector<size_t> inputLinks; // A list of indices pointing to m_Links.The following relation should hold : k in m_Nodes[i].inputLinks -> m_Links[k].dstNodeIdx == i
+        std::vector<size_t> outputLinks; // A list of indices pointing to m_Links.The following relation should hold : k in m_Nodes[i].outputLinks -> m_Links[k].srcNodeIdx == i
+    };
+
+    std::vector<NodeInstance> m_Nodes;
     std::vector<NodeLink> m_Links;
-
-    std::vector<std::vector<Input>> m_NodeInputs;
-    std::vector<std::vector<Output>> m_NodeOutputs;
 };
 
 template<typename T>

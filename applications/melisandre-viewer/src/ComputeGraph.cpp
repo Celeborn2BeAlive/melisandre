@@ -10,7 +10,11 @@ namespace mls
 class DummyNode : public ComputeNode {
 private:
     void compute() override {
-        // do nothing
+        std::cerr << "Dummy !! <3" << std::endl;
+    }
+
+    std::unique_ptr<ComputeNode> clone() const override {
+        return std::make_unique<DummyNode>(*this);
     }
 
     float   Value;
@@ -36,25 +40,83 @@ public:
     }
 };
 
+class AddIntNode : public ComputeNode {
+private:
+    void compute() override {
+        std::cerr << "Add" << std::endl;
+    }
+
+    std::unique_ptr<ComputeNode> clone() const override {
+        return std::make_unique<AddIntNode>(*this);
+    }
+
+    int m_nLhs = 0;
+    int m_nRhs = 0;
+public:
+    void drawGUI() {
+        ImGui::InputInt("lhs", &m_nLhs);
+        ImGui::InputInt("rhs", &m_nRhs);
+
+        ImGui::Value("result", m_nLhs + m_nRhs);
+    }
+
+    int getInputsCount() const {
+        return 2;
+    }
+
+    int getOutputsCount() const {
+        return 1;
+    }
+};
+
 void ComputeGraph::addDummyNode(const std::string& name, const ImVec2& pos, float value, const ImVec4& color, int inputs_count, int outputs_count) {
-    NodeWidget widget;
-    widget.name = name;
-    widget.position = pos;
-    widget.size.x = widget.size.y = 0;
-    m_NodeWidgets.emplace_back(widget);
-    m_Nodes.emplace_back(std::make_unique<DummyNode>(value, color, inputs_count, outputs_count));
+    m_Nodes.emplace_back();
+    auto& instance = m_Nodes.back();
+    instance.name = name;
+    instance.position = pos;
+    instance.size.x = instance.size.y = 0;
+    instance.node = std::make_unique<DummyNode>(value, color, inputs_count, outputs_count);
+}
+
+void ComputeGraph::addIntNode(const std::string& name, const ImVec2& pos) {
+    m_Nodes.emplace_back();
+    auto& instance = m_Nodes.back();
+    instance.name = name;
+    instance.position = pos;
+    instance.size.x = instance.size.y = 0;
+    instance.node = std::make_unique<AddIntNode>();
 }
 
 ImVec2 ComputeGraph::GetInputSlotPos(int node_idx, int slot_no) const { 
-    const auto& widget = m_NodeWidgets[node_idx];
-    const auto& node = m_Nodes[node_idx];
-    return ImVec2(widget.position.x, widget.position.y + widget.size.y * ((float)slot_no + 1) / ((float)node->getInputsCount() + 1));
+    const auto& instance = m_Nodes[node_idx];
+    const auto& node = instance.node;
+    return ImVec2(instance.position.x, instance.position.y + instance.size.y * ((float)slot_no + 1) / ((float)node->getInputsCount() + 1));
 }
 
 ImVec2 ComputeGraph::GetOutputSlotPos(int node_idx, int slot_no) const {
-    const auto& widget = m_NodeWidgets[node_idx];
-    const auto& node = m_Nodes[node_idx];
-    return ImVec2(widget.position.x + widget.size.x, widget.position.y + widget.size.y * ((float)slot_no + 1) / ((float)node->getOutputsCount() + 1));
+    const auto& instance = m_Nodes[node_idx];
+    const auto& node = instance.node;
+    return ImVec2(instance.position.x + instance.size.x, instance.position.y + instance.size.y * ((float)slot_no + 1) / ((float)node->getOutputsCount() + 1));
+}
+
+bool ComputeGraph::addLink(int srcNode, int outputIdx, int dstNode, int inputIdx) {
+
+
+    for (auto i = 0u; i < m_Links.size(); ++i) {
+        if (m_Links[i].dstNodeIdx == dstNode && m_Links[i].dstNodeSlotIdx == inputIdx) {
+            m_Links[i] = NodeLink(srcNode, outputIdx, dstNode, inputIdx);
+
+            m_Nodes[srcNode].outputLinks.emplace_back(i);
+
+            return true;
+        }
+    }
+    m_Links.push_back(NodeLink(srcNode, outputIdx, dstNode, inputIdx));
+
+    m_Nodes[srcNode].outputLinks.emplace_back(m_Links.size() - 1);
+    m_Nodes[dstNode].inputLinks.emplace_back(m_Links.size() - 1);
+
+    return true;
 }
 
 void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
@@ -80,8 +142,8 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
         addDummyNode("MainTex", ImVec2(40, 50), 0.5f, ImColor(255, 100, 100), 1, 1);
         addDummyNode("BumpMap", ImVec2(40, 150), 0.42f, ImColor(200, 100, 200), 1, 1);
         addDummyNode("Combine", ImVec2(270, 80), 1.0f, ImColor(0, 200, 100), 2, 2);
-        m_Links.push_back(NodeLink(0, 0, 2, 0));
-        m_Links.push_back(NodeLink(1, 0, 2, 1));
+        addLink(0, 0, 2, 0);
+        addLink(1, 0, 2, 1);
         inited = true;
     }
 
@@ -94,11 +156,10 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
     ImGui::Separator();
     for (int node_idx = 0; node_idx < m_Nodes.size(); node_idx++)
     {
-        const auto& node = m_Nodes[node_idx];
-        const auto& widget = m_NodeWidgets[node_idx];
+        const auto& instance = m_Nodes[node_idx];
 
         ImGui::PushID(node_idx);
-        if (ImGui::Selectable(widget.name.c_str(), node_idx == node_selected))
+        if (ImGui::Selectable(instance.name.c_str(), node_idx == node_selected))
             node_selected = node_idx;
         if (ImGui::IsItemHovered())
         {
@@ -148,21 +209,21 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
     for (int link_idx = 0; link_idx < m_Links.size(); link_idx++)
     {
         const auto& link = m_Links[link_idx];
-        const auto& node_inp = m_Nodes[link.InputIdx];
-        const auto& node_out = m_Nodes[link.OutputIdx];
-        ImVec2 p1 = offset + GetOutputSlotPos(link.InputIdx, link.InputSlot);
-        ImVec2 p2 = offset + GetInputSlotPos(link.OutputIdx, link.OutputSlot);
+        const auto& node_inp = m_Nodes[link.srcNodeIdx];
+        const auto& node_out = m_Nodes[link.dstNodeIdx];
+        ImVec2 p1 = offset + GetOutputSlotPos(link.srcNodeIdx, link.srcNodeSlotIdx);
+        ImVec2 p2 = offset + GetInputSlotPos(link.dstNodeIdx, link.dstNodeSlotIdx);
         draw_list->AddBezierCurve(p1, p1 + ImVec2(+50, 0), p2 + ImVec2(-50, 0), p2, ImColor(200, 200, 100), 3.0f);
     }
 
     // Display nodes
     for (int node_idx = 0; node_idx < m_Nodes.size(); node_idx++)
     {
-        const auto& node = m_Nodes[node_idx];
-        auto& widget = m_NodeWidgets[node_idx];
+        auto& instance = m_Nodes[node_idx];
+        const auto& node = instance.node;
 
         ImGui::PushID(node_idx);
-        ImVec2 node_rect_min = offset + widget.position;
+        ImVec2 node_rect_min = offset + instance.position;
 
         // Display node contents first
         draw_list->ChannelsSetCurrent(1); // Foreground
@@ -170,15 +231,15 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
         ImGui::SetCursorScreenPos(node_rect_min + NODE_WINDOW_PADDING);
         ImGui::BeginGroup(); // Lock horizontal position
         
-        ImGui::Text("%s", widget.name.c_str());
+        ImGui::Text("%s (%d)", instance.name.c_str(), node_idx);
         node->drawGUI();
 
         ImGui::EndGroup();
 
         // Save the size of what we have emitted and whether any of the widgets are being used
         bool node_widgets_active = (!old_any_active && ImGui::IsAnyItemActive());
-        widget.size = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING;
-        ImVec2 node_rect_max = node_rect_min + widget.size;
+        instance.size = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING;
+        ImVec2 node_rect_max = node_rect_min + instance.size;
 
         ImGui::PushID(2); // Input widgets
         for (int slot_idx = 0; slot_idx < node->getInputsCount(); slot_idx++) {
@@ -199,7 +260,7 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
                 if (ImGui::IsMouseClicked(0)) {
                     if (plug_selected_type == 1) {
                         plug_selected_type = 0;
-                        m_Links.push_back(NodeLink(plug_selected_node_idx, plug_selected, node_idx, slot_idx));
+                        addLink(plug_selected_node_idx, plug_selected, node_idx, slot_idx);
                     }
                     else {
                         plug_selected_type = 2;
@@ -234,7 +295,7 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
                 if (ImGui::IsMouseClicked(0)) {
                     if (plug_selected_type == 2) {
                         plug_selected_type = 0;
-                        m_Links.push_back(NodeLink(node_idx, slot_idx, plug_selected_node_idx, plug_selected));
+                        addLink(node_idx, slot_idx, plug_selected_node_idx, plug_selected);
                     }
                     else {
                         plug_selected_type = 1;
@@ -253,7 +314,7 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
         // Display node box
         draw_list->ChannelsSetCurrent(0); // Background
         ImGui::SetCursorScreenPos(node_rect_min);
-        ImGui::InvisibleButton("node", widget.size);
+        ImGui::InvisibleButton("node", instance.size);
         if (ImGui::IsItemHovered())
         {
             node_hovered_in_scene = node_idx;
@@ -263,7 +324,7 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
         if (node_widgets_active || node_moving_active)
             node_selected = node_idx;
         if (node_moving_active && ImGui::IsMouseDragging(0))
-            widget.position = widget.position + ImGui::GetIO().MouseDelta;
+            instance.position = instance.position + ImGui::GetIO().MouseDelta;
 
         ImU32 node_bg_color = (node_hovered_in_list == node_idx || node_hovered_in_scene == node_idx || (node_hovered_in_list == -1 && node_selected == node_idx)) ? ImColor(75, 75, 75) : ImColor(60, 60, 60);
         draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, 4.0f);
@@ -303,20 +364,24 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
     if (ImGui::BeginPopup("context_menu"))
     {
-        ComputeNode* node = node_selected != -1 ? m_Nodes[node_selected].get() : NULL;
+        const auto& node = node_selected != -1 ? m_Nodes[node_selected].node.get() : nullptr;
         ImVec2 scene_pos = ImGui::GetMousePosOnOpeningCurrentPopup() - offset;
         if (node)
         {
-            ImGui::Text("Node '%s'", m_NodeWidgets[node_selected].name.c_str());
+            ImGui::Text("Node '%s'", m_Nodes[node_selected].name.c_str());
             ImGui::Separator();
             if (ImGui::MenuItem("Rename..", NULL, false, false)) {}
             if (ImGui::MenuItem("Delete", NULL, false, false)) {}
             if (ImGui::MenuItem("Copy", NULL, false, false)) {}
+            ImGui::Separator();
+            if (ImGui::MenuItem("Compute Forward", NULL, false)) {
+                computeForward(node_selected);
+            }
         }
         else
         {
             if (ImGui::MenuItem("Add")) { 
-                addDummyNode("New node", scene_pos, 0.5f, ImColor(100, 100, 200), 2, 2);
+                addIntNode("Add", scene_pos);
             }
             if (ImGui::MenuItem("Paste", NULL, false, false)) {}
         }
