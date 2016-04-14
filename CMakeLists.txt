@@ -22,6 +22,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(melisandre)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 # Select the default type of build Release
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: ${CMAKE_CONFIGURATION_TYPES}" FORCE)
