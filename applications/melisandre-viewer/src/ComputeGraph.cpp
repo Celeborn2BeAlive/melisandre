@@ -87,36 +87,39 @@ void ComputeGraph::addIntNode(const std::string& name, const ImVec2& pos) {
     instance.node = std::make_unique<AddIntNode>();
 }
 
-ImVec2 ComputeGraph::GetInputSlotPos(int node_idx, int slot_no) const { 
+ImVec2 ComputeGraph::GetInputSlotPos(size_t node_idx, size_t slot_no) const {
     const auto& instance = m_Nodes[node_idx];
     const auto& node = instance.node;
     return ImVec2(instance.position.x, instance.position.y + instance.size.y * ((float)slot_no + 1) / ((float)node->getInputsCount() + 1));
 }
 
-ImVec2 ComputeGraph::GetOutputSlotPos(int node_idx, int slot_no) const {
+ImVec2 ComputeGraph::GetOutputSlotPos(size_t node_idx, size_t slot_no) const {
     const auto& instance = m_Nodes[node_idx];
     const auto& node = instance.node;
     return ImVec2(instance.position.x + instance.size.x, instance.position.y + instance.size.y * ((float)slot_no + 1) / ((float)node->getOutputsCount() + 1));
 }
 
-bool ComputeGraph::addLink(int srcNode, int outputIdx, int dstNode, int inputIdx) {
-
+int ComputeGraph::addLink(size_t srcNode, size_t outputIdx, size_t dstNode, size_t inputIdx) {
+    if (depthFirstForwardNodeSearch(dstNode, srcNode)) {
+        m_Message = "You cannot create a cycle in a compute graph";
+        return 1;
+    }
 
     for (auto i = 0u; i < m_Links.size(); ++i) {
         if (m_Links[i].dstNodeIdx == dstNode && m_Links[i].dstNodeSlotIdx == inputIdx) {
             m_Links[i] = NodeLink(srcNode, outputIdx, dstNode, inputIdx);
 
             m_Nodes[srcNode].outputLinks.emplace_back(i);
-
-            return true;
+            m_Message = "Link succesfully created";
+            return 0;
         }
     }
     m_Links.push_back(NodeLink(srcNode, outputIdx, dstNode, inputIdx));
 
     m_Nodes[srcNode].outputLinks.emplace_back(m_Links.size() - 1);
     m_Nodes[dstNode].inputLinks.emplace_back(m_Links.size() - 1);
-
-    return true;
+    m_Message = "Link succesfully created";
+    return 0;
 }
 
 void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
@@ -180,7 +183,8 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
     ImGui::Text("Hold middle mouse button to scroll (%.2f,%.2f)", scrolling.x, scrolling.y);
     ImGui::SameLine(ImGui::GetWindowWidth() - 100);
     ImGui::Checkbox("Show grid", &show_grid);
-    ImGui::Text("win_pos (%.2f,%.2f)", ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);
+    // ImGui::Text("win_pos (%.2f,%.2f)", ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);
+    ImGui::Text(m_Message.c_str());
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, ImColor(60, 60, 70, 200));
@@ -291,17 +295,14 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
                 if (plug_selected_type != 1) {
                     color.Value.w = 255;
                 }
-
-                if (ImGui::IsMouseClicked(0)) {
-                    if (plug_selected_type == 2) {
-                        plug_selected_type = 0;
-                        addLink(node_idx, slot_idx, plug_selected_node_idx, plug_selected);
-                    }
-                    else {
-                        plug_selected_type = 1;
-                        plug_selected = slot_idx;
-                        plug_selected_node_idx = node_idx;
-                    }
+                if (ImGui::IsMouseClicked(0) && plug_selected_type == 0) {
+                    plug_selected_type = 1;
+                    plug_selected = slot_idx;
+                    plug_selected_node_idx = node_idx;
+                }
+                if (ImGui::IsMouseReleased(0) && plug_selected_type == 2) {
+                    plug_selected_type = 0;
+                    addLink(node_idx, slot_idx, plug_selected_node_idx, plug_selected);
                 }
             }
 
@@ -377,6 +378,9 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
             if (ImGui::MenuItem("Compute Forward", NULL, false)) {
                 computeForward(node_selected);
             }
+            if (ImGui::MenuItem("Compute Backward", NULL, false)) {
+                computeBackward(node_selected);
+            }
         }
         else
         {
@@ -384,6 +388,10 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
                 addIntNode("Add", scene_pos);
             }
             if (ImGui::MenuItem("Paste", NULL, false, false)) {}
+            ImGui::Separator();
+            if (ImGui::MenuItem("Compute All")) {
+                compute();
+            }
         }
         ImGui::EndPopup();
     }

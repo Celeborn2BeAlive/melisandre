@@ -12,6 +12,8 @@
 #include <melisandre/utils/EventDispatcher.hpp>
 #include <melisandre/viewer/gui.hpp>
 
+#include <melisandre/itertools/range.hpp>
+
 namespace mls
 {
 // Creating a node graph editor for ImGui
@@ -42,11 +44,11 @@ private:
 
     virtual int getOutputsCount() const = 0;
 
-    virtual void setInput(size_t slot, const ComputeValue& value) {
-    }
+    //virtual void setInput(size_t slot, const ComputeValue& value) {
+    //}
 
-    virtual ComputeValue& getOutput(size_t slot) const {
-    }
+    //virtual ComputeValue& getOutput(size_t slot) const {
+    //}
 
     virtual void drawGUI() = 0;
 public:
@@ -61,94 +63,55 @@ public:
 
     ComputeGraph(const std::string& name) {}
 
-    std::unordered_set<NodeID> computeConnectedComponent(NodeID srcNode) {
-        std::unordered_set<NodeID> visitSet;
+    // @todo: there is a bug here in the toposort, find it
+    void compute(const std::unordered_set<NodeID>& visitSet) {
+        std::unordered_map<NodeID, size_t> parentCount;
+        for (auto node : visitSet) {
+            const auto& links = m_Nodes[node].inputLinks;
+            parentCount[node] = std::count_if(begin(links), end(links), [&](const auto& linkIdx) {
+                return visitSet.find(m_Links[linkIdx].srcNodeIdx) != end(visitSet);
+            });
+        }
+
         std::stack<NodeID> visitStack;
-
-        visitStack.emplace(srcNode);
-        visitSet.emplace(srcNode);
-
-        std::cerr << "srcNode = " << srcNode << std::endl;
+        for (auto pair : parentCount) {
+            if (pair.second == 0u) {
+                visitStack.emplace(pair.first);
+            }
+        }
 
         while (!visitStack.empty()) {
-            auto currentNode = visitStack.top();
+            auto node = visitStack.top();
             visitStack.pop();
 
-            std::cerr << "currentNode = " << currentNode << std::endl;
+            std::cerr << "Computing node index " << node << std::endl;
+            m_Nodes[node].node->compute();
 
-            for (auto out : m_Nodes[currentNode].outputLinks) {
-                const auto& linkOut = m_Links[out];
-                auto node = linkOut.dstNodeIdx;
-                if (visitSet.find(node) == end(visitSet)) {
-                    visitStack.push(node);
-                    visitSet.emplace(node);
-                    std::cerr << "node = " << node << std::endl;
+            for (auto out : m_Nodes[node].outputLinks) {
+                auto childNode = m_Links[out].dstNodeIdx;
+                auto count = --parentCount[childNode];
+                if (count == 0u) {
+                    visitStack.emplace(childNode);
                 }
             }
         }
-
-        return visitSet;
     }
 
-    // Compute the priority of a node for a given visit set, stored as keys of the map 'priorities'
-    size_t computeForwardPriority(NodeID node, std::unordered_map<NodeID, int>& priorities) {
-        // Priority not yet computed
-        if (priorities[node] == 0) {
-            priorities[node] = -1; // priority is being computed
-
-            auto maxPriority = size_t{ 0 };
-
-            // Compute the map of parent priotities:
-            for (auto in : m_Nodes[node].inputLinks) {
-                const auto& linkIn = m_Links[in];
-                auto nodeIn = linkIn.srcNodeIdx;
-                // Only affect a priority to nodes in the visit set
-                if (priorities.find(nodeIn) == std::end(priorities) || priorities[nodeIn] == -1) {
-                    continue;
-                }
-                auto nodeInPriority = computeForwardPriority(nodeIn, priorities);
-                maxPriority = std::max(maxPriority, nodeInPriority);
-            }
-
-            priorities[node] = maxPriority + 1;
-        }
-
-        return priorities[node];
+    void compute() {
+        auto r = range(size(m_Nodes));
+        compute(std::unordered_set<NodeID> { std::begin(r), std::end(r) });
     }
 
     void computeForward(NodeID srcNode) {
-        auto visitSet = computeConnectedComponent(srcNode);
+        std::unordered_set<NodeID> visitSet;
+        depthFirstForwardNodeSearch(srcNode, [&](auto node) { return false; }, visitSet);
+        compute(visitSet);
+    }
 
-        std::cerr << "nb node to visit " << size(visitSet) << std::endl;
-
-        std::unordered_map<NodeID, int> priorities;
-        for (auto node : visitSet) {
-            priorities[node] = 0;
-        }
-        priorities[srcNode] = 1;
-
-        for (auto node : visitSet) {
-            computeForwardPriority(node, priorities);
-        }
-
-        std::vector<std::pair<NodeID, size_t>> nodes;
-        nodes.reserve(size(priorities));
-        std::copy(begin(priorities), end(priorities), std::back_inserter(nodes));
-        std::sort(begin(nodes), end(nodes), [&](auto lhs, auto rhs) {
-            return lhs.second < rhs.second;
-        });
-
-        for (auto nodePair : nodes) {
-            auto currentNode = nodePair.first;
-
-            std::cerr << "Computing node index " << currentNode << std::endl;
-            m_Nodes[currentNode].node->compute();
-
-            for (auto out : m_Nodes[currentNode].outputLinks) {
-                const auto& link = m_Links[out];
-                m_Nodes[link.dstNodeIdx].setInput(link.dstNodeSlotIdx, m_Nodes[currentNode].getOutput(link.srcNodeSlotIdx));
-            }
-        }
+    void computeBackward(NodeID srcNode) {
+        std::unordered_set<NodeID> visitSet;
+        depthFirstBackwardNodeSearch(srcNode, [&](auto node) { return false; }, visitSet);
+        compute(visitSet);
     }
 
     void drawGUI(size_t width, size_t height, bool* pOpened = nullptr);
@@ -156,23 +119,103 @@ public:
 private:
     struct NodeLink
     {
-        int srcNodeIdx, srcNodeSlotIdx, dstNodeIdx, dstNodeSlotIdx;
+        size_t srcNodeIdx, srcNodeSlotIdx, dstNodeIdx, dstNodeSlotIdx;
 
-        NodeLink(int input_idx, int input_slot, int output_idx, int output_slot) { srcNodeIdx = input_idx; srcNodeSlotIdx = input_slot; dstNodeIdx = output_idx; dstNodeSlotIdx = output_slot; }
+        NodeLink(size_t input_idx, size_t input_slot, size_t output_idx, size_t output_slot) { srcNodeIdx = input_idx; srcNodeSlotIdx = input_slot; dstNodeIdx = output_idx; dstNodeSlotIdx = output_slot; }
     };
 
     void addDummyNode(const std::string& name, const ImVec2& pos, float value, const ImVec4& color, int inputs_count, int outputs_count);
 
     void addIntNode(const std::string& name, const ImVec2& pos);
 
-    ImVec2 GetInputSlotPos(int node_idx, int slot_no) const;
+    ImVec2 GetInputSlotPos(size_t node_idx, size_t slot_no) const;
 
-    ImVec2 GetOutputSlotPos(int node_idx, int slot_no) const;
+    ImVec2 GetOutputSlotPos(size_t node_idx, size_t slot_no) const;
 
     // This function must:
     // - test if the link does not exists already
     // - test if the types match
-    bool addLink(int srcNode, int outputIdx, int dstNode, int inputIdx);
+    int addLink(size_t srcNode, size_t outputIdx, size_t dstNode, size_t inputIdx);
+
+    template<typename Functor>
+    bool depthFirstForwardNodeSearch(size_t srcNode, Functor&& predicate, std::unordered_set<NodeID>& visitSet) {
+        std::stack<NodeID> visitStack;
+
+        visitStack.emplace(srcNode);
+        visitSet.emplace(srcNode);
+
+        while (!visitStack.empty()) {
+            auto currentNode = visitStack.top();
+            visitStack.pop();
+
+            if (predicate(currentNode)) {
+                return true;
+            }
+
+            for (auto out : m_Nodes[currentNode].outputLinks) {
+                const auto& linkOut = m_Links[out];
+                auto node = linkOut.dstNodeIdx;
+                if (visitSet.find(node) == end(visitSet)) {
+                    visitStack.push(node);
+                    visitSet.emplace(node);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    template<typename Functor>
+    bool depthFirstForwardNodeSearch(size_t srcNode, Functor&& predicate) {
+        std::unordered_set<NodeID> visitSet;
+        return depthFirstForwardNodeSearch(srcNode, std::forward<Functor&&>(predicate), visitSet);
+    }
+
+    bool depthFirstForwardNodeSearch(size_t srcNode, size_t dstNode) {
+        return depthFirstForwardNodeSearch(srcNode, [&](auto currentNode) {
+            return currentNode == dstNode;
+        });
+    }
+
+    template<typename Functor>
+    bool depthFirstBackwardNodeSearch(size_t srcNode, Functor&& predicate, std::unordered_set<NodeID>& visitSet) {
+        std::stack<NodeID> visitStack;
+
+        visitStack.emplace(srcNode);
+        visitSet.emplace(srcNode);
+
+        while (!visitStack.empty()) {
+            auto currentNode = visitStack.top();
+            visitStack.pop();
+
+            if (predicate(currentNode)) {
+                return true;
+            }
+
+            for (auto in : m_Nodes[currentNode].inputLinks) {
+                const auto& linkIn = m_Links[in];
+                auto node = linkIn.srcNodeIdx;
+                if (visitSet.find(node) == end(visitSet)) {
+                    visitStack.push(node);
+                    visitSet.emplace(node);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    template<typename Functor>
+    bool depthFirstBackwardNodeSearch(size_t srcNode, Functor&& predicate) {
+        std::unordered_set<NodeID> visitSet;
+        return depthFirstBackwardNodeSearch(srcNode, std::forward<Functor&&>(predicate), visitSet);
+    }
+
+    bool depthFirstBackwardNodeSearch(size_t srcNode, size_t dstNode) {
+        return depthFirstBackwardNodeSearch(srcNode, [&](auto currentNode) {
+            return currentNode == dstNode;
+        });
+    }
 
     struct NodeInstance {
         std::string name;
@@ -186,6 +229,8 @@ private:
 
     std::vector<NodeInstance> m_Nodes;
     std::vector<NodeLink> m_Links;
+
+    std::string m_Message;
 };
 
 template<typename T>
