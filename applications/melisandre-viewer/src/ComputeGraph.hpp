@@ -32,7 +32,95 @@ class ComputeGraph;
 
 struct ComputeValue; // Generic value
 
-class ComputeNode {
+enum ComputeVarMod {
+    ComputeVarMod_In = 1 << 0,
+    ComputeVarMod_Out = 1 << 1,
+    ComputeVarMod_InOut = ComputeVarMod_In | ComputeVarMod_Out
+};
+
+inline bool drawNodeVarGUI(const std::string& name, ComputeVarMod mode, int& ref) {
+    if (mode & ComputeVarMod_In) {
+        return ImGui::InputInt(name.c_str(), &ref);
+    }
+    ImGui::Value(name.c_str(), ref);
+    return false;
+}
+
+class ComputeNode 
+{
+public:
+    static const auto In = ComputeVarMod_In;
+    static const auto Out = ComputeVarMod_Out;
+    static const auto InOut = ComputeVarMod_InOut;
+
+    class IVar 
+    {
+    public:
+        virtual ~IVar() {
+        }
+
+        explicit IVar(ComputeNode& thisNode, ComputeVarMod mod, const std::string& name) :
+            m_Name{ name },
+            m_nMod{ mod }
+        {
+            init(thisNode);
+        }
+
+        const std::string& name() const {
+            return m_Name;
+        }
+
+        ComputeVarMod mode() const {
+            return m_nMod;
+        }
+
+        virtual bool drawGUI() = 0;
+    private:
+        void init(ComputeNode& thisNode) {
+            if (m_nMod & In) {
+                ++thisNode.m_nInputCount;
+            }
+            if (m_nMod & Out) {
+                ++thisNode.m_nOutputCount;
+            }
+
+            auto ptrOffset = (size_t) this - (size_t)&thisNode;
+
+            thisNode.m_VarAddressOffsets.emplace_back(ptrOffset);
+        }
+
+        std::string m_Name;
+        ComputeVarMod m_nMod;
+    };
+
+    template<typename T>
+    class Var: public IVar
+    {
+    public:
+        explicit Var(ComputeNode& thisNode, ComputeVarMod mod, const std::string& name) :
+            IVar{ thisNode, mod, name } {
+        }
+
+        template<typename... Args>
+        explicit Var(ComputeNode& thisNode, ComputeVarMod mod, const std::string& name, Args&&... args) :
+            IVar{ thisNode, mod, name },
+            m_Var{ std::forward<Args&&>(args)... } {
+        }
+
+        const T& get() const {
+            return m_Var;
+        }
+
+        T& get() {
+            return m_Var;
+        }
+
+        virtual bool drawGUI() {
+            return drawNodeVarGUI(name(), mode(), m_Var);
+        }
+    private:
+        T m_Var;
+    };
 private:
     friend class ComputeGraph;
 
@@ -40,20 +128,30 @@ private:
 
     virtual std::unique_ptr<ComputeNode> clone() const = 0;
 
-    virtual int getInputsCount() const = 0;
+    virtual int getInputsCount() const {
+        return m_nInputCount;
+    }
 
-    virtual int getOutputsCount() const = 0;
+    virtual int getOutputsCount() const {
+        return m_nOutputCount;
+    }
 
-    //virtual void setInput(size_t slot, const ComputeValue& value) {
-    //}
+    virtual void drawGUI() {
+        for (auto ptrOffset : m_VarAddressOffsets) {
+            IVar* ptr = (IVar*)((size_t) this + ptrOffset);
+            ptr->drawGUI();
+        }
+    }
 
-    //virtual ComputeValue& getOutput(size_t slot) const {
-    //}
-
-    virtual void drawGUI() = 0;
 public:
     virtual ~ComputeNode() {
     }
+
+private:
+    std::vector<size_t> m_VarAddressOffsets;
+
+    size_t m_nInputCount = 0;
+    size_t m_nOutputCount = 0;
 };
 
 class ComputeGraph

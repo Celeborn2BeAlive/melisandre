@@ -43,30 +43,17 @@ public:
 class AddIntNode : public ComputeNode {
 private:
     void compute() override {
-        std::cerr << "Add" << std::endl;
+        m_nResult.get() = m_nLhs.get() + m_nRhs.get();
     }
 
     std::unique_ptr<ComputeNode> clone() const override {
         return std::make_unique<AddIntNode>(*this);
     }
 
-    int m_nLhs = 0;
-    int m_nRhs = 0;
-public:
-    void drawGUI() {
-        ImGui::InputInt("lhs", &m_nLhs);
-        ImGui::InputInt("rhs", &m_nRhs);
+    Var<int> m_nLhs{ *this, InOut, "lhs", 0 };
+    Var<int> m_nRhs{ *this, InOut, "rhs", 0 };
 
-        ImGui::Value("result", m_nLhs + m_nRhs);
-    }
-
-    int getInputsCount() const {
-        return 2;
-    }
-
-    int getOutputsCount() const {
-        return 1;
-    }
+    Var<int> m_nResult{ *this, Out, "result", m_nLhs.get() + m_nRhs.get() };
 };
 
 void ComputeGraph::addDummyNode(const std::string& name, const ImVec2& pos, float value, const ImVec4& color, int inputs_count, int outputs_count) {
@@ -142,11 +129,18 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
 
     if (!inited)
     {
-        addDummyNode("MainTex", ImVec2(40, 50), 0.5f, ImColor(255, 100, 100), 1, 1);
+        /*addDummyNode("MainTex", ImVec2(40, 50), 0.5f, ImColor(255, 100, 100), 1, 1);
         addDummyNode("BumpMap", ImVec2(40, 150), 0.42f, ImColor(200, 100, 200), 1, 1);
         addDummyNode("Combine", ImVec2(270, 80), 1.0f, ImColor(0, 200, 100), 2, 2);
         addLink(0, 0, 2, 0);
-        addLink(1, 0, 2, 1);
+        addLink(1, 0, 2, 1);*/
+
+        addIntNode("Add#1", ImVec2(40, 50));
+        addIntNode("Add#2", ImVec2(40, 150));
+        addIntNode("Add#3", ImVec2(270, 80));
+        addLink(0, 2, 2, 0);
+        addLink(1, 2, 2, 1);
+
         inited = true;
     }
 
@@ -236,7 +230,29 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
         ImGui::BeginGroup(); // Lock horizontal position
         
         ImGui::Text("%s (%d)", instance.name.c_str(), node_idx);
-        node->drawGUI();
+        //node->drawGUI();
+
+        std::vector<float> inputCirclesYCoord;
+        std::vector<float> outputCirclesYCoord;
+
+        int i = 0;
+        for (auto ptrOffset : node->m_VarAddressOffsets) {
+            auto* ptr = (ComputeNode::IVar*)((size_t) node.get() + ptrOffset);
+            
+            ImVec2 startPos = ImGui::GetCursorScreenPos();
+            ptr->drawGUI();
+            ImVec2 endPos = ImGui::GetCursorScreenPos();
+
+            auto yCenter = (startPos + endPos).y * 0.5f - offset.y;
+
+            if (ptr->mode() & ComputeNode::In) {
+                inputCirclesYCoord.emplace_back(yCenter);
+            }
+
+            if (ptr->mode() & ComputeNode::Out) {
+                outputCirclesYCoord.emplace_back(yCenter);
+            }
+        }
 
         ImGui::EndGroup();
 
@@ -246,10 +262,10 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
         ImVec2 node_rect_max = node_rect_min + instance.size;
 
         ImGui::PushID(2); // Input widgets
-        for (int slot_idx = 0; slot_idx < node->getInputsCount(); slot_idx++) {
+        for (int slot_idx = 0; slot_idx < inputCirclesYCoord.size(); slot_idx++) {
             ImGui::PushID(slot_idx);
 
-            auto nodeCenter = offset + GetInputSlotPos(node_idx, slot_idx);
+            auto nodeCenter = offset + instance.position + ImVec2(0, inputCirclesYCoord[slot_idx]);
 
             ImGui::SetCursorScreenPos(nodeCenter - ImVec2(NODE_SLOT_RADIUS, NODE_SLOT_RADIUS));
             ImGui::InvisibleButton("input", ImVec2(NODE_SLOT_RADIUS * 2, NODE_SLOT_RADIUS * 2));
@@ -278,39 +294,72 @@ void ComputeGraph::drawGUI(size_t width, size_t height, bool* pOpened) {
 
             ImGui::PopID();
         }
+
+        //for (int slot_idx = 0; slot_idx < node->getInputsCount(); slot_idx++) {
+        //    ImGui::PushID(slot_idx);
+
+        //    auto nodeCenter = offset + GetInputSlotPos(node_idx, slot_idx);
+
+        //    ImGui::SetCursorScreenPos(nodeCenter - ImVec2(NODE_SLOT_RADIUS, NODE_SLOT_RADIUS));
+        //    ImGui::InvisibleButton("input", ImVec2(NODE_SLOT_RADIUS * 2, NODE_SLOT_RADIUS * 2));
+
+        //    ImColor color = ImColor(150, 150, 150, 150);
+
+        //    if (ImGui::IsItemHovered()) {
+        //        if (plug_selected_type != 2) {
+        //            color.Value.w = 255;
+        //        }
+
+        //        if (ImGui::IsMouseClicked(0)) {
+        //            if (plug_selected_type == 1) {
+        //                plug_selected_type = 0;
+        //                addLink(plug_selected_node_idx, plug_selected, node_idx, slot_idx);
+        //            }
+        //            else {
+        //                plug_selected_type = 2;
+        //                plug_selected = slot_idx;
+        //                plug_selected_node_idx = node_idx;
+        //            }
+        //        }
+        //    }
+
+        //    draw_list->AddCircleFilled(nodeCenter, NODE_SLOT_RADIUS, color);
+
+        //    ImGui::PopID();
+        //}
         ImGui::PopID();
 
-        ImGui::PushID(1); // Output widgets
-        for (int slot_idx = 0; slot_idx < node->getOutputsCount(); slot_idx++) {
-            ImGui::PushID(slot_idx);
+        //ImGui::PushID(1); // Output widgets
+        //for (int slot_idx = 0; slot_idx < node->getOutputsCount(); slot_idx++) {
+        //    ImGui::PushID(slot_idx);
 
-            auto nodeCenter = offset + GetOutputSlotPos(node_idx, slot_idx);
+        //    auto nodeCenter = offset + GetOutputSlotPos(node_idx, slot_idx);
 
-            ImGui::SetCursorScreenPos(nodeCenter - ImVec2(NODE_SLOT_RADIUS, NODE_SLOT_RADIUS));
-            ImGui::InvisibleButton("output", ImVec2(NODE_SLOT_RADIUS * 2, NODE_SLOT_RADIUS * 2));
+        //    ImGui::SetCursorScreenPos(nodeCenter - ImVec2(NODE_SLOT_RADIUS, NODE_SLOT_RADIUS));
+        //    ImGui::InvisibleButton("output", ImVec2(NODE_SLOT_RADIUS * 2, NODE_SLOT_RADIUS * 2));
 
-            ImColor color = ImColor(150, 150, 150, 150);
+        //    ImColor color = ImColor(150, 150, 150, 150);
 
-            if (ImGui::IsItemHovered()) {
-                if (plug_selected_type != 1) {
-                    color.Value.w = 255;
-                }
-                if (ImGui::IsMouseClicked(0) && plug_selected_type == 0) {
-                    plug_selected_type = 1;
-                    plug_selected = slot_idx;
-                    plug_selected_node_idx = node_idx;
-                }
-                if (ImGui::IsMouseReleased(0) && plug_selected_type == 2) {
-                    plug_selected_type = 0;
-                    addLink(node_idx, slot_idx, plug_selected_node_idx, plug_selected);
-                }
-            }
+        //    if (ImGui::IsItemHovered()) {
+        //        if (plug_selected_type != 1) {
+        //            color.Value.w = 255;
+        //        }
+        //        if (ImGui::IsMouseClicked(0) && plug_selected_type == 0) {
+        //            plug_selected_type = 1;
+        //            plug_selected = slot_idx;
+        //            plug_selected_node_idx = node_idx;
+        //        }
+        //        if (ImGui::IsMouseReleased(0) && plug_selected_type == 2) {
+        //            plug_selected_type = 0;
+        //            addLink(node_idx, slot_idx, plug_selected_node_idx, plug_selected);
+        //        }
+        //    }
 
-            draw_list->AddCircleFilled(nodeCenter, NODE_SLOT_RADIUS, color);
+        //    draw_list->AddCircleFilled(nodeCenter, NODE_SLOT_RADIUS, color);
 
-            ImGui::PopID();
-        }
-        ImGui::PopID();
+        //    ImGui::PopID();
+        //}
+        //ImGui::PopID();
 
         // Display node box
         draw_list->ChannelsSetCurrent(0); // Background
